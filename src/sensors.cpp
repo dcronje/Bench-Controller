@@ -1,166 +1,199 @@
-// #include "sensors.h"
-// #include "constants.h"
-// #include "control.h"
+#include "sensors.h"
+#include "constants.h"
+#include "control.h"
 
-// #include <stdio.h>
-// #include <stdlib.h>
-// #include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
 
-// #include "pico/stdlib.h"
-// #include "hardware/adc.h"
-// #include "FreeRTOS.h"
-// #include "task.h"
-// #include "one_wire.h"
+#include "pico/stdlib.h"
+#include "hardware/i2c.h"
+#include "FreeRTOS.h"
+#include "task.h"
+#include "one_wire.h"
 
+volatile float lightsATemp = 0.0f;
+volatile float lightsBTemp = 0.0f;
+volatile float lightsCTemp = 0.0f;
 
-// One_wire motorTempSensor(TEMPERATURE_SENSOR_GPIO); // Internal sensor 2
+volatile float boothTemp = 0.0f;
+volatile float boothHumidity = 0.0f;
 
-// volatile float currentDraw = 0.0f;
-// volatile float pressure = 0.0f;
-// volatile float temperature = 0.0f;
+One_wire lightsATempSensor(LIGHTS_A_TEMP_GPIO); // Internal sensor 2
+One_wire lightsBTempSensor(LIGHTS_B_TEMP_GPIO); // Internal sensor 2
+One_wire lightsCTempSensor(LIGHTS_B_TEMP_GPIO); // Internal sensor 2
 
-// void initSensors(void)
-// {
-//   // Initialize ADC
-//   adc_init();
+void initSensors(void)
+{
+  lightsATempSensor.init();
+  lightsBTempSensor.init();
+  lightsCTempSensor.init();
 
-//   motorTempSensor.init();
+  i2c_init(SENSOR_I2C_PORT, SHT30_I2C_FREQ); // Use the frequency constant
+  gpio_set_function(SHT30_I2C_SDA_GPIO, GPIO_FUNC_I2C);
+  gpio_set_function(SHT30_I2C_SCL_GPIO, GPIO_FUNC_I2C);
+  gpio_pull_up(SHT30_I2C_SDA_GPIO);
+  gpio_pull_up(SHT30_I2C_SCL_GPIO);
 
-//   // Assuming you use onboard ADC (GPIO 26 to 29 are ADC capable on Pico)
-//   // Setup GPIO for ADC usage (Check actual GPIO connection and adjust)
-//   adc_gpio_init(PRESSURE_SENSOR_GPIO);
-//   adc_gpio_init(CURRENT_SENSOR_GPIO);
+  uint8_t buffer[2];
+  buffer[0] = SHT30_CMD_MEASURE_HIGHREP >> 8;
+  buffer[1] = SHT30_CMD_MEASURE_HIGHREP & 0xFF;
 
-//   // Configure ADC to use 12-bit resolution
-//   adc_set_round_robin(1u << 0 | 1u << 1); // Enable channels 0 and 1 for round robin
-//   adc_select_input(0);                    // Default to channel 0
-// }
+  int result = i2c_write_blocking(SENSOR_I2C_PORT, SHT30_I2C_ADDR, buffer, 2, false);
 
-// float readMotorTemperature()
-// {
-//   rom_address_t address{};
-//   motorTempSensor.single_device_read_rom(address);
-//   motorTempSensor.convert_temperature(address, true, false);
-//   return motorTempSensor.temperature(address);
-// }
+  // Wake up the sensor
+  buffer[0] = TSL2561_CMD_BIT | TSL2561_CONTROL;
+  buffer[1] = 0x03;
+  i2c_write_blocking(SENSOR_I2C_PORT, TSL2561_ADDRESS, buffer, 2, false);
 
-// float readADC(uint channel)
-// {
-//   adc_select_input(channel);
-//   uint16_t raw = adc_read();
-//   return (raw * 3.3f) / 4096.0f; // Convert ADC value to voltage assuming 3.3V reference
-// }
+  // Set integration time and gain
+  buffer[0] = TSL2561_CMD_BIT | TSL2561_TIMING;
+  buffer[1] = 0x02; // 402ms integration time
+  i2c_write_blocking(SENSOR_I2C_PORT, TSL2561_ADDRESS, buffer, 2, false);
 
-// float voltageToPsi(float voltage)
-// {
-//   // Clamp voltage to the expected range after scaling
-//   if (voltage < 0.333f) // Minimum expected scaled voltage
-//     voltage = 0.333f;
-//   if (voltage > 3.0f) // Maximum expected scaled voltage
-//     voltage = 3.0f;
+  // Disable the interrupt
+  buffer[0] = TSL2561_CMD_BIT | TSL2561_INTERRUPT;
+  buffer[1] = TSL2561_INTERRUPT_DISABLE;
+  i2c_write_blocking(SENSOR_I2C_PORT, TSL2561_ADDRESS, buffer, 2, false);
+}
 
-//   // Convert the scaled voltage back to the presumed sensor voltage
-//   float actualSensorVoltage = (voltage - 0.333f) * (4.5f - 0.5f) / (3.0f - 0.333f) + 0.5f;
+float calculateLux(uint16_t ch0, uint16_t ch1)
+{
+  float ratio = (ch1 / (float)ch0);
+  float lux = 0.0;
 
-//   // Calculate kPa from the presumed sensor voltage
-//   // Linear mapping from 0.5V (-100 kPa) to 4.5V (300 kPa)
-//   float kPa = ((actualSensorVoltage - 0.5f) * 400.0f / 4.0f) - 100.0f;
+  // Use coefficients to calculate lux based on the ratio of infrared to visible light
+  if (ratio <= 0.50)
+  {
+    lux = (0.0304 * ch0) - (0.062 * ch0 * pow(ratio, 1.4));
+  }
+  else if (ratio <= 0.61)
+  {
+    lux = (0.0224 * ch0) - (0.031 * ch1);
+  }
+  else if (ratio <= 0.80)
+  {
+    lux = (0.0128 * ch0) - (0.0153 * ch1);
+  }
+  else if (ratio <= 1.30)
+  {
+    lux = (0.00146 * ch0) - (0.00112 * ch1);
+  }
+  else
+  {
+    lux = 0;
+  }
 
-//   // Convert kPa to PSI
-//   return kPa * 0.14503773779f;
-// }
+  return lux;
+}
 
-// float voltageToAmps(float voltage)
-// {
-//   // Ensure voltage stays within the expected output range of the sensor
-//   if (voltage < 1.65f) // Quiescent output when no current flows
-//     voltage = 1.65f;
-//   if (voltage > 3.3f) // Maximum expected voltage output
-//     voltage = 3.3f;
+uint32_t readBoothLight()
+{
+  uint8_t buffer[4];
+  uint32_t ch0, ch1;
 
-//   // Subtract the quiescent voltage to get the voltage contribution by the current
-//   float voltageContribution = voltage - 1.65f;
+  // Read channel 0
+  buffer[0] = TSL2561_CMD_BIT | TSL2561_CHANNEL0_LOW;
+  i2c_write_blocking(SENSOR_I2C_PORT, TSL2561_ADDRESS, buffer, 1, true);
+  i2c_read_blocking(SENSOR_I2C_PORT, TSL2561_ADDRESS, buffer, 2, false);
+  ch0 = (buffer[1] << 8) | buffer[0];
 
-//   // Conversion from voltage to current, using the adjusted sensitivity
-//   return voltageContribution / 0.0264; // Adjusted sensitivity of 26.4mV/A, converted to V/A for the formula
-// }
+  // Read channel 1
+  buffer[0] = TSL2561_CMD_BIT | TSL2561_CHANNEL1_LOW;
+  i2c_write_blocking(SENSOR_I2C_PORT, TSL2561_ADDRESS, buffer, 1, true);
+  i2c_read_blocking(SENSOR_I2C_PORT, TSL2561_ADDRESS, buffer, 2, false);
+  ch1 = (buffer[1] << 8) | buffer[0];
 
-// void sensorTask(void *params)
-// {
-//   const TickType_t xDelay = pdMS_TO_TICKS(500); // 1000 ms delay between readings
+  return (ch0 << 16) | ch1; // Return 32-bit reading (CH0 high and low)
+}
 
-//   static float lastPressure = 0;
-//   static float lastCurrentDraw = 0;
-//   bool isPressurized = false;
+float readLightsATemperature()
+{
+  rom_address_t address{};
+  lightsATempSensor.single_device_read_rom(address);
+  lightsATempSensor.convert_temperature(address, true, false);
+  return lightsATempSensor.temperature(address);
+}
 
-//   while (1)
-//   {
-//     float voltage_pressure = readADC(PRESSURE_SENSOR_ADC_CHANNEL); // Adjust channel as needed
-//     pressure = roundf(voltageToPsi(voltage_pressure) * 10.0f) / 10.0f;
+float readLightsBTemperature()
+{
+  rom_address_t address{};
+  lightsBTempSensor.single_device_read_rom(address);
+  lightsBTempSensor.convert_temperature(address, true, false);
+  return lightsBTempSensor.temperature(address);
+}
 
-//     float voltage_current = readADC(CURRENT_SENSOR_ADC_CHANNEL); // Adjust channel as needed
-//     currentDraw = roundf(voltageToAmps(voltage_current) * 10.0f) / 10.0f;
+float readLightsCTemperature()
+{
+  rom_address_t address{};
+  lightsCTempSensor.single_device_read_rom(address);
+  lightsCTempSensor.convert_temperature(address, true, false);
+  return lightsCTempSensor.temperature(address);
+}
 
-//     if (currentDraw > 0 && lastCurrentDraw == 0)
-//     {
-//       handleMotorStart();
-//     }
-//     else if (currentDraw == 0 && lastCurrentDraw > 0)
-//     {
-//       handleMotorStop();
-//     }
-//     lastCurrentDraw = currentDraw;
+bool readBoothTemperature(float *temperature, float *humidity)
+{
+  uint8_t command[2] = {0x2C, 0x06}; // High repeatability measurement
+  int commandResult = i2c_write_blocking(SENSOR_I2C_PORT, SHT30_I2C_ADDR, command, 2, false);
+  if (commandResult < 0)
+  {
+    printf("Failed to send command\n");
+    *temperature = -1000;
+    *humidity = -100;
+    return false;
+  }
 
-//     if (pressure != lastPressure)
-//     {
-//       sendPressureChangeInfo(pressure);
-//     }
+  uint8_t buffer[6];
+  int result = i2c_read_blocking(SENSOR_I2C_PORT, SHT30_I2C_ADDR, buffer, 6, false);
+  if (result < 0)
+  {
+    printf("I2C read failed\n");
+    *temperature = -1000;
+    *humidity = -100;
+    return false;
+  }
 
-//     if (pressure > lastPressure)
-//     {
-//       if (isPressurized)
-//       {
-//         handleSupplyStop();
-//       }
-//     }
-//     else if (lastPressure > pressure)
-//     {
-//       if (pressure == 0)
-//       {
-//         isPressurized = false; // Reset pressurization status on shutdown
-//       }
-//       else if (isPressurized)
-//       {
-//         handleSupplyStart();
-//       }
-//     }
-//     else if (pressure == lastPressure && !isPressurized && pressure > 0)
-//     {
-//       isPressurized = true; // Mark as pressurized when pressure stabilizes
-//     }
+  // Convert the raw data
+  uint16_t tempRaw = (buffer[0] << 8) | buffer[1];
+  uint16_t humRaw = (buffer[3] << 8) | buffer[4];
 
-//     lastPressure = pressure;
+  *temperature = -45.0 + 175.0 * ((float)tempRaw / 65535.0);
+  *humidity = 100.0 * ((float)humRaw / 65535.0);
 
-   
+  return true;
+}
 
-//     printf("Current Draw: %.2f A, Pressure: %.2f PSI\n Temp: %.2f", currentDraw, pressure, temperature);
+void sensorTask(void *params)
+{
+  const TickType_t xDelay = pdMS_TO_TICKS(500); // 1000 ms delay between readings
+  while (1)
+  {
 
-//     vTaskDelay(xDelay); // Delay
-//   }
-// }
+    lightsATemp = readLightsATemperature();
+    lightsBTemp = readLightsBTemperature();
+    lightsCTemp = readLightsCTemperature();
 
-// void temperatureTask(void *params)
-// {
+    float localBoothTemp = 0.0f;
+    float localBoothHumidity = 0.0f;
 
-//   static float lastTemperature = 0;
+    readBoothTemperature(&localBoothTemp, &localBoothHumidity);
 
-//   while (1)
-//   {
-//      temperature = readMotorTemperature();
-//      if (lastTemperature != temperature) {
-//       sendTemperatureChangeInfo(temperature);
-//      }
-//      lastTemperature = temperature;
-//      vTaskDelay(5000); // Delay 5 seconds
-//   }
-// }
+    if (localBoothTemp != -1000)
+    {
+      boothTemp = localBoothTemp;
+    }
+
+    if (localBoothHumidity != -1000)
+    {
+      boothHumidity = localBoothHumidity;
+    }
+
+    uint32_t lightData = readBoothLight();
+    uint16_t ch0 = lightData >> 16;    // Extract the high 16 bits for channel 0
+    uint16_t ch1 = lightData & 0xFFFF; // Extract the low 16 bits for channel 1
+    boothLux = calculateLux(ch0, ch1);
+
+    printf("Temperatures A: %.2f B: %.2f C: %.2f LUX: %.2f", lightsATemp, lightsBTemp, lightsCTemp, boothLux);
+    vTaskDelay(xDelay); // Delay
+  }
+}

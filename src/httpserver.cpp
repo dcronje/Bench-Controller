@@ -41,7 +41,7 @@ static err_t handle_post_request(struct tcp_pcb *pcb, const char *request)
         currentSettings.authMode = authMode->valueint;
 
         // Trigger a settings validation to save the updated settings
-        requestSettingsValidation();
+        requestSettingsUpdate();
 
         printf("Saved credentials: SSID='%s', Password='%s', AuthMode=%d\n",
                currentSettings.ssid, currentSettings.password, currentSettings.authMode);

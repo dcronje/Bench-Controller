@@ -7,6 +7,8 @@
 #include "settings.h"
 #include "control.h"
 #include "sensors.h"
+#include "display.h"
+#include "interaction.h"
 
 #define WATCHDOG_TIMEOUT_MS 5000 // Watchdog timeout in milliseconds
 
@@ -61,6 +63,9 @@ int main()
     initSettings();
     initControl();
     initWifi();
+    initSensors();
+    initDisplay();
+    initInteraction();
 
     // requestSettingsReset();
 
@@ -68,6 +73,9 @@ int main()
     xTaskCreate(settingsTask, "SettingsTask", 256, NULL, tskIDLE_PRIORITY + 1, NULL);
     xTaskCreate(ledTask, "LedTask", 256, NULL, tskIDLE_PRIORITY, NULL);
     xTaskCreate(controlTask, "ControlTask", 256, NULL, tskIDLE_PRIORITY + 2, NULL);
+    xTaskCreate(sensorTask, "SensorsTask", 256, NULL, tskIDLE_PRIORITY + 2, NULL);
+    xTaskCreate(displayTask, "DisplayTask", 512, NULL, tskIDLE_PRIORITY + 1, NULL);
+    xTaskCreate(interactionTask, "InteractionTask", 256, NULL, tskIDLE_PRIORITY + 2, NULL);
     xTaskCreate(watchdogKickTask, "WatchdogTask", 256, NULL, tskIDLE_PRIORITY + 1, NULL);
 
     vTaskStartScheduler();

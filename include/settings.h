@@ -16,9 +16,7 @@ typedef struct
   char ssid[32];
   char password[64];
   int authMode;
-  int pressureTimeout;
-  int supplyTimeout;
-  int motorTimeout;
+  int fanSpeed;
   uint32_t magic; // Magic number for validity check
 } Settings;
 
@@ -26,24 +24,18 @@ typedef struct
 typedef enum
 {
   SETTINGS_UPDATE, // Update the settings
-  SETTINGS_RESET   // Reset settings to default
+  SETTINGS_RESET,  // Reset settings to default
 } SettingsCommandType;
-
-// Command structure for queue operations
-typedef struct
-{
-  SettingsCommandType type; // Command type
-  Settings data;            // Data associated with the command (if any)
-} SettingsCommand;
 
 // Queue and global settings
 extern QueueHandle_t settingsQueue;
 extern volatile Settings currentSettings;
+static Settings localSettingsCopy;
 
 // Function declarations
 void initSettings();
-void requestSettingsValidation();
 void requestSettingsReset();
+void requestSettingsUpdate();
 void settingsTask(void *params);
 
 #endif // SETTINGS_H

@@ -119,167 +119,209 @@ uint8_t calculateColor(float targetTemperature, float actualTemperature)
 
 void renderSetPressureTimeout()
 {
-    canvas.clear();
-    canvas.setFixedFont(ssd1306xled_font6x8);
-    canvas.setColor(WHITE);
-    canvas.printFixed(14, 20, "TARGET TEMP", STYLE_NORMAL);
-    canvas.setFreeFont(free_koi12x24);
-    char buffer[32];
-    snprintf(buffer, sizeof(buffer), "%d", (int)currentSettings.targetTemp);
-    canvas.setColor(calculateColor(ambientTemp, currentSettings.targetTemp));
-    canvas.printFixed(36, 32, buffer, STYLE_NORMAL);
-    display.drawCanvas(0, 0, canvas);
+    // canvas.clear();
+    // canvas.setFixedFont(ssd1306xled_font6x8);
+    // canvas.setColor(WHITE);
+    // canvas.printFixed(14, 20, "TARGET TEMP", STYLE_NORMAL);
+    // canvas.setFreeFont(free_koi12x24);
+    // char buffer[32];
+    // snprintf(buffer, sizeof(buffer), "%d", (int)currentSettings.targetTemp);
+    // canvas.setColor(calculateColor(ambientTemp, currentSettings.targetTemp));
+    // canvas.printFixed(36, 32, buffer, STYLE_NORMAL);
+    // display.drawCanvas(0, 0, canvas);
 }
 
-void renderHome(float chamberTemp, float ambientTemp, float heateTemp)
+void renderSetMotorTimeout()
+{
+    // canvas.clear();
+    // canvas.setFixedFont(ssd1306xled_font6x8);
+    // canvas.setColor(WHITE);
+    // canvas.printFixed(14, 20, "TARGET TEMP", STYLE_NORMAL);
+    // canvas.setFreeFont(free_koi12x24);
+    // char buffer[32];
+    // snprintf(buffer, sizeof(buffer), "%d", (int)currentSettings.targetTemp);
+    // canvas.setColor(calculateColor(ambientTemp, currentSettings.targetTemp));
+    // canvas.printFixed(36, 32, buffer, STYLE_NORMAL);
+    // display.drawCanvas(0, 0, canvas);
+}
+
+void renderSetReleaseTimeout()
+{
+    // canvas.clear();
+    // canvas.setFixedFont(ssd1306xled_font6x8);
+    // canvas.setColor(WHITE);
+    // canvas.printFixed(14, 20, "TARGET TEMP", STYLE_NORMAL);
+    // canvas.setFreeFont(free_koi12x24);
+    // char buffer[32];
+    // snprintf(buffer, sizeof(buffer), "%d", (int)currentSettings.targetTemp);
+    // canvas.setColor(calculateColor(ambientTemp, currentSettings.targetTemp));
+    // canvas.printFixed(36, 32, buffer, STYLE_NORMAL);
+    // display.drawCanvas(0, 0, canvas);
+}
+
+void renderSetFanSpeed()
+{
+    // canvas.clear();
+    // canvas.setFixedFont(ssd1306xled_font6x8);
+    // canvas.setColor(WHITE);
+    // canvas.printFixed(14, 20, "TARGET TEMP", STYLE_NORMAL);
+    // canvas.setFreeFont(free_koi12x24);
+    // char buffer[32];
+    // snprintf(buffer, sizeof(buffer), "%d", (int)currentSettings.targetTemp);
+    // canvas.setColor(calculateColor(ambientTemp, currentSettings.targetTemp));
+    // canvas.printFixed(36, 32, buffer, STYLE_NORMAL);
+    // display.drawCanvas(0, 0, canvas);
+}
+
+void renderHome()
 {
     canvas.clear();
 
     // Light
-    if (lightOn)
-    {
-        canvas.setColor(WHITE);
-    }
-    else
-    {
-        canvas.setColor(RGB_COLOR8(100, 100, 100));
-    }
-    canvas.drawCircle(5, 5, 1);
-    canvas.drawCircle(5, 5, 3);
-    canvas.putPixel(2, 2);
-    canvas.putPixel(2, 8);
-    canvas.putPixel(8, 2);
-    canvas.putPixel(8, 8);
-    int32_t numberOfPoints = lightIntensity / 10;
-    if (numberOfPoints > 0)
-    {
-        canvas.fillRect(0, 12, numberOfPoints - 1, 13);
-    }
-    int32_t remainder = lightIntensity % 10;
-    if (remainder > 0)
-    {
-        int32_t intensity = ((lightOn ? 255 : 100) * remainder) / 10;
-        canvas.setColor(RGB_COLOR8(intensity, intensity, intensity));
-        canvas.putPixel(numberOfPoints, 12);
-        canvas.putPixel(numberOfPoints, 13);
-    }
+    // if (lightOn)
+    // {
+    //     canvas.setColor(WHITE);
+    // }
+    // else
+    // {
+    //     canvas.setColor(RGB_COLOR8(100, 100, 100));
+    // }
+    // canvas.drawCircle(5, 5, 1);
+    // canvas.drawCircle(5, 5, 3);
+    // canvas.putPixel(2, 2);
+    // canvas.putPixel(2, 8);
+    // canvas.putPixel(8, 2);
+    // canvas.putPixel(8, 8);
+    // int32_t numberOfPoints = lightIntensity / 10;
+    // if (numberOfPoints > 0)
+    // {
+    //     canvas.fillRect(0, 12, numberOfPoints - 1, 13);
+    // }
+    // int32_t remainder = lightIntensity % 10;
+    // if (remainder > 0)
+    // {
+    //     int32_t intensity = ((lightOn ? 255 : 100) * remainder) / 10;
+    //     canvas.setColor(RGB_COLOR8(intensity, intensity, intensity));
+    //     canvas.putPixel(numberOfPoints, 12);
+    //     canvas.putPixel(numberOfPoints, 13);
+    // }
 
-    // On indicator
-    if (isOn)
-    {
-        if ((int)chamberTemp == (int)currentSettings.targetTemp)
-        {
-            canvas.setColor(GREEN);
-        }
-        else if ((int)chamberTemp > (int)currentSettings.targetTemp)
-        {
-            canvas.setColor(BLUE);
-            int32_t numberOfPoints = fanIntensity / 10;
-            if (numberOfPoints > 0)
-            {
-                canvas.fillRect(86, 12, 86 + numberOfPoints - 1, 13);
-            }
-            int32_t remainder = fanIntensity % 10;
-            if (remainder > 0)
-            {
-                int32_t intensity = (255 * remainder) / 10;
-                canvas.setColor(RGB_COLOR8(0, 0, intensity));
-                canvas.putPixel(86 + numberOfPoints, 12);
-                canvas.putPixel(86 + numberOfPoints, 13);
-            }
-        }
-        else if ((int)chamberTemp < (int)currentSettings.targetTemp)
-        {
-            canvas.setColor(RED);
-            int32_t numberOfPoints = elementIntensity / 10;
-            if (numberOfPoints > 0)
-            {
-                canvas.fillRect(86, 12, 86 + numberOfPoints - 1, 13);
-            }
-            int32_t remainder = elementIntensity % 10;
-            if (remainder > 0)
-            {
-                int32_t intensity = (255 * remainder) / 10;
-                canvas.setColor(RGB_COLOR8(intensity, 0, 0));
-                canvas.putPixel(86 + numberOfPoints, 12);
-                canvas.putPixel(86 + numberOfPoints, 13);
-            }
-        }
-    }
-    else
-    {
-        canvas.setColor(RGB_COLOR8(100, 100, 100));
-    }
-    canvas.drawCircle(91, 5, 4);
-    canvas.drawLine(91, 2, 91, 8);
+    // // On indicator
+    // if (isOn)
+    // {
+    //     if ((int)boothTemp == (int)currentSettings.targetTemp)
+    //     {
+    //         canvas.setColor(GREEN);
+    //     }
+    //     else if ((int)boothTemp > (int)currentSettings.targetTemp)
+    //     {
+    //         canvas.setColor(BLUE);
+    //         int32_t numberOfPoints = fanIntensity / 10;
+    //         if (numberOfPoints > 0)
+    //         {
+    //             canvas.fillRect(86, 12, 86 + numberOfPoints - 1, 13);
+    //         }
+    //         int32_t remainder = fanIntensity % 10;
+    //         if (remainder > 0)
+    //         {
+    //             int32_t intensity = (255 * remainder) / 10;
+    //             canvas.setColor(RGB_COLOR8(0, 0, intensity));
+    //             canvas.putPixel(86 + numberOfPoints, 12);
+    //             canvas.putPixel(86 + numberOfPoints, 13);
+    //         }
+    //     }
+    //     else if ((int)boothTemp < (int)currentSettings.targetTemp)
+    //     {
+    //         canvas.setColor(RED);
+    //         int32_t numberOfPoints = elementIntensity / 10;
+    //         if (numberOfPoints > 0)
+    //         {
+    //             canvas.fillRect(86, 12, 86 + numberOfPoints - 1, 13);
+    //         }
+    //         int32_t remainder = elementIntensity % 10;
+    //         if (remainder > 0)
+    //         {
+    //             int32_t intensity = (255 * remainder) / 10;
+    //             canvas.setColor(RGB_COLOR8(intensity, 0, 0));
+    //             canvas.putPixel(86 + numberOfPoints, 12);
+    //             canvas.putPixel(86 + numberOfPoints, 13);
+    //         }
+    //     }
+    // }
+    // else
+    // {
+    //     canvas.setColor(RGB_COLOR8(100, 100, 100));
+    // }
+    // canvas.drawCircle(91, 5, 4);
+    // canvas.drawLine(91, 2, 91, 8);
 
-    char buffer[32];
-    // Chamber
-    canvas.setFreeFont(free_koi12x24);
-    if (chamberTemp == -1000)
-    {
-        snprintf(buffer, sizeof(buffer), "00");
-    }
-    else
-    {
-        snprintf(buffer, sizeof(buffer), "%d", (int)chamberTemp);
-    }
-    canvas.setColor(calculateColor(currentSettings.targetTemp, chamberTemp));
-    canvas.fillRect(26, 36, 70, 37);
-    if (chamberTemp == -1000 || chamberTemp >= 10)
-    {
-        canvas.printFixed(36, 12, buffer, STYLE_NORMAL);
-        canvas.drawCircle(64, 14, 1);
-    }
-    else
-    {
-        canvas.printFixed(42, 12, buffer, STYLE_NORMAL);
-        canvas.drawCircle(52, 14, 1);
-    }
+    // char buffer[32];
+    // // Booth
+    // canvas.setFreeFont(free_koi12x24);
+    // if (boothTemp == -1000)
+    // {
+    //     snprintf(buffer, sizeof(buffer), "00");
+    // }
+    // else
+    // {
+    //     snprintf(buffer, sizeof(buffer), "%d", (int)boothTemp);
+    // }
+    // canvas.setColor(calculateColor(currentSettings.targetTemp, boothTemp));
+    // canvas.fillRect(26, 36, 70, 37);
+    // if (boothTemp == -1000 || boothTemp >= 10)
+    // {
+    //     canvas.printFixed(36, 12, buffer, STYLE_NORMAL);
+    //     canvas.drawCircle(64, 14, 1);
+    // }
+    // else
+    // {
+    //     canvas.printFixed(42, 12, buffer, STYLE_NORMAL);
+    //     canvas.drawCircle(52, 14, 1);
+    // }
 
-    canvas.setFixedFont(ssd1306xled_font6x8);
-    canvas.setFontSpacing(2);
-    canvas.setColor(WHITE);
-    snprintf(buffer, sizeof(buffer), "%d%%", (int)chamberHumidity);
-    if (chamberHumidity < 10)
-    {
-        canvas.printFixed(40, 44, buffer, STYLE_NORMAL);
-    }
-    else if (chamberHumidity == 100)
-    {
-        canvas.printFixed(34, 44, buffer, STYLE_NORMAL);
-    }
-    else
-    {
-        canvas.printFixed(38, 44, buffer, STYLE_NORMAL);
-    }
+    // canvas.setFixedFont(ssd1306xled_font6x8);
+    // canvas.setFontSpacing(2);
+    // canvas.setColor(WHITE);
+    // snprintf(buffer, sizeof(buffer), "%d%%", (int)boothHumidity);
+    // if (boothHumidity < 10)
+    // {
+    //     canvas.printFixed(40, 44, buffer, STYLE_NORMAL);
+    // }
+    // else if (boothHumidity == 100)
+    // {
+    //     canvas.printFixed(34, 44, buffer, STYLE_NORMAL);
+    // }
+    // else
+    // {
+    //     canvas.printFixed(38, 44, buffer, STYLE_NORMAL);
+    // }
 
-    if (tempIsHigh)
-    {
-        if (flashing)
-        {
-            canvas.setColor(RED);
-            canvas.drawCircle(4, 60, 2);
-            flashing = false;
-        }
-        else
-        {
-            flashing = true;
-        }
-    }
-    else if (tempIsLow)
-    {
-        if (flashing)
-        {
-            canvas.setColor(BLUE);
-            canvas.drawCircle(4, 22, 2);
-            flashing = false;
-        }
-        else
-        {
-            flashing = true;
-        }
-    }
+    // if (tempIsHigh)
+    // {
+    //     if (flashing)
+    //     {
+    //         canvas.setColor(RED);
+    //         canvas.drawCircle(4, 60, 2);
+    //         flashing = false;
+    //     }
+    //     else
+    //     {
+    //         flashing = true;
+    //     }
+    // }
+    // else if (tempIsLow)
+    // {
+    //     if (flashing)
+    //     {
+    //         canvas.setColor(BLUE);
+    //         canvas.drawCircle(4, 22, 2);
+    //         flashing = false;
+    //     }
+    //     else
+    //     {
+    //         flashing = true;
+    //     }
+    // }
 
     display.drawCanvas(0, 0, canvas);
 }
@@ -289,82 +331,48 @@ void displayUp()
 
     if (currentDisplay == HOME)
     {
-        lightIntensity -= 2;
-        if (lightIntensity <= 0)
-        {
-            lightIntensity = 0;
-        }
+        // lightIntensity -= 2;
+        // if (lightIntensity <= 0)
+        // {
+        //     lightIntensity = 0;
+        // }
     }
-    else if (currentDisplay == MAIN_MENU_OFF)
-    {
-        mainMenuOff.up();
-        mainMenuOff.show(display);
-    }
-    else if (currentDisplay == MAIN_MENU_ON)
-    {
-        mainMenuOn.up();
-        mainMenuOn.show(display);
-    }
-    else if (currentDisplay == SETTINGS_MENU)
+    if (currentDisplay == SETTINGS_MENU)
     {
         settingsMenu.up();
         settingsMenu.show(display);
     }
-    else if (currentDisplay == CALIBRATE_MENU)
+    else if (currentDisplay == SET_PRESSURE_TIMEOUT_DISPLAY)
     {
-        calibrateMenu.up();
-        calibrateMenu.show(display);
+        // currentSettings.targetTemp--;
+        // if (currentSettings.targetTemp < minTargetTemp)
+        // {
+        //     currentSettings.targetTemp = minTargetTemp;
+        // }
     }
-    else if (currentDisplay == SET_TARGET_TEMP)
+    else if (currentDisplay == SET_MOTOR_TIMEOUT_DISPLAY)
     {
-        currentSettings.targetTemp--;
-        if (currentSettings.targetTemp < minTargetTemp)
-        {
-            currentSettings.targetTemp = minTargetTemp;
-        }
+        // currentSettings.targetTemp--;
+        // if (currentSettings.targetTemp < minTargetTemp)
+        // {
+        //     currentSettings.targetTemp = minTargetTemp;
+        // }
     }
-    else if (currentDisplay == SET_HIGH_ALARM)
+    else if (currentDisplay == SET_RELEASE_TIMEOUT_DISPLAY)
     {
-        currentSettings.highAlarm--;
-        if (currentSettings.highAlarm < minHighAlarm)
-        {
-            currentSettings.highAlarm = minHighAlarm;
-        }
+        // currentSettings.targetTemp--;
+        // if (currentSettings.targetTemp < minTargetTemp)
+        // {
+        //     currentSettings.targetTemp = minTargetTemp;
+        // }
     }
-    else if (currentDisplay == SET_LOW_ALARM)
+    else if (currentDisplay == SET_FAN_SPEED_DISPLAY)
     {
-        currentSettings.lowAlarm--;
-        if (currentSettings.lowAlarm < minLowAlarm)
-        {
-            currentSettings.lowAlarm = minLowAlarm;
-        }
-    }
-    else if (currentDisplay == SET_HEATING_DIFF)
-    {
-        currentSettings.heatingDiff--;
-        if (currentSettings.heatingDiff < minHeatingDiff)
-        {
-            currentSettings.heatingDiff = minHeatingDiff;
-        }
-    }
-    else if (currentDisplay == SELECT_CALIBRATION_SENSOR)
-    {
-        if (selectedSensor == MOSFET)
-        {
-            selectedSensor = HEATER;
-        }
-        else if (selectedSensor == HEATER)
-        {
-            selectedSensor = AMBIENT;
-        }
-        else if (selectedSensor == AMBIENT)
-        {
-            selectedSensor = CHAMBER;
-        }
-        else if (selectedSensor = CHAMBER)
-        {
-            selectedSensor = MOSFET;
-        }
+        // currentSettings.targetTemp--;
+        // if (currentSettings.targetTemp < minTargetTemp)
+        // {
+        //     currentSettings.targetTemp = minTargetTemp;
+        // }
     }
 }
 
@@ -372,89 +380,55 @@ void displayDown()
 {
     if (currentDisplay == HOME)
     {
-        lightIntensity += 2;
-        if (lightIntensity > 100)
-        {
-            lightIntensity = 100;
-        }
-    }
-    else if (currentDisplay == MAIN_MENU_OFF)
-    {
-        mainMenuOff.down();
-        mainMenuOff.show(display);
-    }
-    else if (currentDisplay == MAIN_MENU_ON)
-    {
-        mainMenuOn.down();
-        mainMenuOn.show(display);
+        // lightIntensity += 2;
+        // if (lightIntensity > 100)
+        // {
+        //     lightIntensity = 100;
+        // }
     }
     else if (currentDisplay == SETTINGS_MENU)
     {
         settingsMenu.down();
         settingsMenu.show(display);
     }
-    else if (currentDisplay == CALIBRATE_MENU)
+    else if (currentDisplay == SET_PRESSURE_TIMEOUT_DISPLAY)
     {
-        calibrateMenu.down();
-        calibrateMenu.show(display);
+        // currentSettings.targetTemp++;
+        // if (currentSettings.targetTemp > maxTargetTemp)
+        // {
+        //     currentSettings.targetTemp = maxTargetTemp;
+        // }
     }
-    else if (currentDisplay == SET_TARGET_TEMP)
+    else if (currentDisplay == SET_MOTOR_TIMEOUT_DISPLAY)
     {
-        currentSettings.targetTemp++;
-        if (currentSettings.targetTemp > maxTargetTemp)
-        {
-            currentSettings.targetTemp = maxTargetTemp;
-        }
+        // currentSettings.targetTemp++;
+        // if (currentSettings.targetTemp > maxTargetTemp)
+        // {
+        //     currentSettings.targetTemp = maxTargetTemp;
+        // }
     }
-    else if (currentDisplay == SET_HIGH_ALARM)
+    else if (currentDisplay == SET_RELEASE_TIMEOUT_DISPLAY)
     {
-        currentSettings.highAlarm++;
-        if (currentSettings.highAlarm > maxHighAlarm)
-        {
-            currentSettings.highAlarm = maxHighAlarm;
-        }
+        // currentSettings.targetTemp++;
+        // if (currentSettings.targetTemp > maxTargetTemp)
+        // {
+        //     currentSettings.targetTemp = maxTargetTemp;
+        // }
     }
-    else if (currentDisplay == SET_LOW_ALARM)
+    else if (currentDisplay == SET_FAN_SPEED_DISPLAY)
     {
-        currentSettings.lowAlarm++;
-        if (currentSettings.lowAlarm > maxLowAlarm)
-        {
-            currentSettings.lowAlarm = maxLowAlarm;
-        }
-    }
-    else if (currentDisplay == SET_HEATING_DIFF)
-    {
-        currentSettings.heatingDiff++;
-        if (currentSettings.heatingDiff > maxHeatingDiff)
-        {
-            currentSettings.heatingDiff = maxHeatingDiff;
-        }
-    }
-    else if (currentDisplay == SELECT_CALIBRATION_SENSOR)
-    {
-        if (selectedSensor == CHAMBER)
-        {
-            selectedSensor = AMBIENT;
-        }
-        else if (selectedSensor == AMBIENT)
-        {
-            selectedSensor = HEATER;
-        }
-        else if (selectedSensor == HEATER)
-        {
-            selectedSensor = MOSFET;
-        }
-        else if (selectedSensor = MOSFET)
-        {
-            selectedSensor = CHAMBER;
-        }
+        // currentSettings.targetTemp++;
+        // if (currentSettings.targetTemp > maxTargetTemp)
+        // {
+        //     currentSettings.targetTemp = maxTargetTemp;
+        // }
     }
 }
 
 void displayHome()
 {
     currentDisplay = HOME;
-    renderHome(ambientTemp, chamberTemp, 40.0f);
+    renderHome();
 }
 
 void displaySettingsMenu()
@@ -465,158 +439,40 @@ void displaySettingsMenu()
     settingsMenu.show(display);
 }
 
-void displayCalibrateMenu()
-{
-    currentDisplay = CALIBRATE_MENU;
-    display.setFixedFont(ssd1306xled_font6x8);
-    display.clear();
-    calibrateMenu.show(display);
-}
-
-void displayMainMenuOn()
-{
-    currentDisplay = MAIN_MENU_ON;
-    display.setFixedFont(ssd1306xled_font6x8);
-    display.clear();
-    mainMenuOn.show(display);
-}
-
-void displayMainMenuOff()
-{
-    currentDisplay = MAIN_MENU_OFF;
-    display.setFixedFont(ssd1306xled_font6x8);
-    display.clear();
-    mainMenuOff.show(display);
-}
-
-void displayMainMenu()
-{
-    if (isOn)
-    {
-        displayMainMenuOn();
-    }
-    else
-    {
-        displayMainMenuOn();
-    }
-}
-
-void displaySensorCalibration()
-{
-    currentDisplay = CALIBRATE_SENSORS;
-    sensorCalibrationProgress = 0;
-    renderCalibrateSensors();
-    initiateCalibration(selectedSensor);
-}
-
 void displayEnter()
 {
-    if ((tempIsHigh || tempIsLow) && !alarmAcknowledged)
+    if (currentDisplay == HOME)
     {
-        alarmAcknowledged = true;
-    }
-    else if (currentDisplay == HOME)
-    {
-        lightOn = !lightOn;
-    }
-    else if (currentDisplay == MAIN_MENU_ON)
-    {
-        uint8_t selection = mainMenuOn.selection();
-        if (selection == 0)
-        {
-            isOn = !isOn;
-            displayHome();
-        }
-        else if (selection == 1)
-        {
-            displaySettingsMenu();
-        }
-        else if (selection == 2)
-        {
-            // TODO: info
-        }
-        else if (selection == 3)
-        {
-            displayCalibrateMenu();
-        }
-        else
-        {
-            displayBack();
-        }
-    }
-    else if (currentDisplay == MAIN_MENU_OFF)
-    {
-        uint8_t selection = mainMenuOff.selection();
-        if (selection == 0)
-        {
-            isOn = !isOn;
-            displayHome();
-        }
-        else if (selection == 1)
-        {
-            displaySettingsMenu();
-        }
-        else if (selection == 2)
-        {
-            // TODO: info
-        }
-        else if (selection == 3)
-        {
-            displayCalibrateMenu();
-        }
-        else
-        {
-            displayBack();
-        }
+        // lightOn = !lightOn;
     }
     else if (currentDisplay == SETTINGS_MENU)
     {
         uint8_t selection = settingsMenu.selection();
         if (selection == 0)
         {
-            currentDisplay = SET_TARGET_TEMP;
+            currentDisplay = SET_PRESSURE_TIMEOUT_DISPLAY;
         }
         else if (selection == 1)
         {
-            currentDisplay = SET_HIGH_ALARM;
+            currentDisplay = SET_MOTOR_TIMEOUT_DISPLAY;
         }
         else if (selection == 2)
         {
-            currentDisplay = SET_LOW_ALARM;
+            currentDisplay = SET_RELEASE_TIMEOUT_DISPLAY;
         }
         else if (selection == 3)
         {
-            currentDisplay = SET_HEATING_DIFF;
+            currentDisplay = SET_FAN_SPEED_DISPLAY;
         }
         else
         {
             displayBack();
         }
     }
-    else if (currentDisplay == CALIBRATE_MENU)
-    {
-        uint8_t selection = calibrateMenu.selection();
-        if (selection == 0)
-        {
-            currentDisplay = SELECT_CALIBRATION_SENSOR;
-        }
-        else if (selection == 1)
-        {
-            currentDisplay = CALIBRATE_HEATER;
-        }
-        else
-        {
-            displayBack();
-        }
-    }
-    else if (currentDisplay == SELECT_CALIBRATION_SENSOR)
-    {
-        displaySensorCalibration();
-    }
-    else if (currentDisplay == SET_TARGET_TEMP || currentDisplay == SET_HIGH_ALARM || currentDisplay == SET_LOW_ALARM || currentDisplay == SET_HEATING_DIFF)
+    else if (currentDisplay == SET_PRESSURE_TIMEOUT_DISPLAY || currentDisplay == SET_MOTOR_TIMEOUT_DISPLAY || currentDisplay == SET_RELEASE_TIMEOUT_DISPLAY || currentDisplay == SET_FAN_SPEED_DISPLAY)
     {
         displayBack();
-        checkForSettingsChange();
+        // checkForSettingsChange();
     }
 }
 
@@ -625,36 +481,16 @@ void displayBack()
     printf("BACK!");
     if (currentDisplay == HOME)
     {
-        displayMainMenu();
-    }
-    else if (currentDisplay == MAIN_MENU_OFF || currentDisplay == MAIN_MENU_ON)
-    {
-        displayHome();
+        displaySettingsMenu();
     }
     else if (currentDisplay == SETTINGS_MENU)
     {
-        displayMainMenu();
-    }
-    else if (currentDisplay == CALIBRATE_MENU)
-    {
-        displayMainMenu();
-    }
-    else if (currentDisplay == SELECT_CALIBRATION_SENSOR)
-    {
-        displayCalibrateMenu();
-    }
-    else if (currentDisplay == CALIBRATE_SENSORS)
-    {
         displayHome();
     }
-    else if (currentDisplay == CALIBRATE_HEATER)
-    {
-        // TODO:
-    }
-    else if (currentDisplay == SET_TARGET_TEMP || currentDisplay == SET_HIGH_ALARM || currentDisplay == SET_LOW_ALARM || currentDisplay == SET_HEATING_DIFF)
+    else if (currentDisplay == SET_PRESSURE_TIMEOUT_DISPLAY || currentDisplay == SET_MOTOR_TIMEOUT_DISPLAY || currentDisplay == SET_RELEASE_TIMEOUT_DISPLAY || currentDisplay == SET_FAN_SPEED_DISPLAY)
     {
         displaySettingsMenu();
-        checkForSettingsChange();
+        // checkForSettingsChange();
     }
 }
 
@@ -664,42 +500,31 @@ void displayTask(void *params)
     {
         if (currentDisplay == HOME)
         {
-            static float localChamberTemp, localAmbientTemp;
-
             if (xSemaphoreTake(displayDataMutex, portMAX_DELAY))
             {
-                localChamberTemp = chamberTemp;
-                localAmbientTemp = ambientTemp;
+                // to do set local display structused to render home
                 xSemaphoreGive(displayDataMutex);
             }
             if (currentDisplay == HOME)
             {
-                renderHome(localChamberTemp, localAmbientTemp, 40.0f);
+                renderHome();
             }
         }
-        else if (currentDisplay == SET_TARGET_TEMP)
+        else if (currentDisplay == SET_PRESSURE_TIMEOUT_DISPLAY)
         {
-            renderTargetTemp();
+            renderSetPressureTimeout();
         }
-        else if (currentDisplay == SET_HIGH_ALARM)
+        else if (currentDisplay == SET_MOTOR_TIMEOUT_DISPLAY)
         {
-            renderHighAlarm();
+            renderSetMotorTimeout();
         }
-        else if (currentDisplay == SET_LOW_ALARM)
+        else if (currentDisplay == SET_RELEASE_TIMEOUT_DISPLAY)
         {
-            renderLowAlarm();
+            renderSetReleaseTimeout();
         }
-        else if (currentDisplay == SET_HEATING_DIFF)
+        else if (currentDisplay == SET_FAN_SPEED_DISPLAY)
         {
-            renderHeatingDiff();
-        }
-        else if (currentDisplay == SELECT_CALIBRATION_SENSOR)
-        {
-            renderSelectSensor();
-        }
-        else if (currentDisplay == CALIBRATE_SENSORS)
-        {
-            renderCalibrateSensors();
+            renderSetFanSpeed();
         }
         vTaskDelay(pdMS_TO_TICKS(200));
     }

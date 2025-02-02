@@ -11,9 +11,7 @@ volatile Settings currentSettings = {
     .ssid = "",
     .password = "",
     .authMode = 0,
-    .pressureTimeout = 60,
-    .supplyTimeout = 5,
-    .motorTimeout = 2,
+    .fanSpeed = 50,
     .magic = SETTINGS_MAGIC,
 };
 
@@ -117,9 +115,7 @@ void resetSettings()
       .ssid = "",
       .password = "",
       .authMode = 0,
-      .pressureTimeout = currentSettings.pressureTimeout, // DO NOT RESET
-      .supplyTimeout = currentSettings.supplyTimeout,     // DO NOT RESET
-      .motorTimeout = currentSettings.motorTimeout,       // DO NOT RESET
+      .fanSpeed = currentSettings.fanSpeed, // DO NOT RESET
       .magic = SETTINGS_MAGIC,
   };
 
@@ -129,23 +125,31 @@ void resetSettings()
 // Initialize settings
 void initSettings()
 {
-  Settings loadedSettings;
+  Settings localSettingsCopy;
 
-  if (loadSettingsFromFlash(&loadedSettings))
+  // Attempt to load settings from flash
+  if (!loadSettingsFromFlash(&localSettingsCopy))
   {
-    memcpy((Settings *)&currentSettings, &loadedSettings, sizeof(Settings));
-  }
-  else
-  {
-    printf("No valid settings found. Using defaults.\n");
-    memset((Settings *)&currentSettings, 0, sizeof(Settings));
-    currentSettings.magic = SETTINGS_MAGIC;
+    printf("No valid settings found in flash. Loading defaults.\n");
+
+    // Load defaults if flash is empty or corrupted
+    localSettingsCopy = (Settings){
+        .ssid = "",
+        .password = "",
+        .authMode = 0,
+        .fanSpeed = currentSettings.fanSpeed, // DO NOT RESET
+        .magic = SETTINGS_MAGIC,
+    };
+
+    // Save defaults to flash
+    saveSettingsToFlash(&localSettingsCopy);
   }
 
-  printf("Current settings: SSID='%s', Auth Mode=%d\n", currentSettings.ssid, currentSettings.authMode);
+  // Copy loaded settings to the global `currentSettings`
+  memcpy((Settings *)&currentSettings, &localSettingsCopy, sizeof(Settings));
 
   // Create the settings queue
-  settingsQueue = xQueueCreate(5, sizeof(SettingsCommand));
+  settingsQueue = xQueueCreate(5, sizeof(SettingsCommandType));
   if (settingsQueue == NULL)
   {
     printf("Failed to create settings queue.\n");
@@ -153,13 +157,9 @@ void initSettings()
 }
 
 // Request settings validation
-void requestSettingsValidation()
+void requestSettingsUpdate()
 {
-  SettingsCommand command = {
-      .type = SETTINGS_UPDATE,
-  };
-
-  memcpy((Settings *)&command.data, (Settings *)&currentSettings, sizeof(Settings));
+  SettingsCommandType command = SETTINGS_UPDATE;
 
   if (xQueueSend(settingsQueue, &command, portMAX_DELAY) != pdPASS)
   {
@@ -170,9 +170,7 @@ void requestSettingsValidation()
 // Request settings reset
 void requestSettingsReset()
 {
-  SettingsCommand command = {
-      .type = SETTINGS_RESET,
-  };
+  SettingsCommandType command = SETTINGS_RESET;
   if (xQueueSend(settingsQueue, &command, portMAX_DELAY) != pdPASS)
   {
     printf("Settings reset request failed (queue full).\n");
@@ -182,19 +180,26 @@ void requestSettingsReset()
 // Settings task
 void settingsTask(void *params)
 {
-  SettingsCommand command;
+  SettingsCommandType command;
 
   while (1)
   {
     if (xQueueReceive(settingsQueue, &command, portMAX_DELAY))
     {
-      if (command.type == SETTINGS_UPDATE)
+      if (command == SETTINGS_UPDATE)
       {
-        printf("Processing settings update.\n");
-        saveSettingsToFlash(&command.data);
-        memcpy((Settings *)&currentSettings, &command.data, sizeof(Settings));
+        if (memcmp((const void *)&currentSettings, (const void *)&localSettingsCopy, sizeof(Settings)) != 0)
+        {
+          printf("Processing settings change.\n");
+          saveSettingsToFlash((const Settings *)&currentSettings);
+          memcpy(&localSettingsCopy, (const void *)&currentSettings, sizeof(Settings));
+        }
+        else
+        {
+          printf("No settings change.\n");
+        }
       }
-      else if (command.type == SETTINGS_RESET)
+      else if (command == SETTINGS_RESET)
       {
         printf("Processing settings reset.\n");
         resetSettings();

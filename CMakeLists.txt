@@ -53,6 +53,7 @@ add_executable(bench-controller
     src/ws2812.pio
     src/compressor-status.cpp
     src/display.cpp
+    src/interaction.cpp
 )
 
 pico_generate_pio_header(bench-controller ${CMAKE_CURRENT_LIST_DIR}/src/ws2812.pio
@@ -78,7 +79,7 @@ target_link_libraries(bench-controller
     pico_cyw43_arch_lwip_sys_freertos
     pico_lwip_http
     pico_lwip_mdns
-    hardware_adc
+    hardware_i2c
     hardware_pio
     FreeRTOS-Kernel-Heap4
     cjson

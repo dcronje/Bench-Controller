@@ -25,13 +25,12 @@ void displayTask(void *params);
 
 enum DisplayType
 {
-    HOME,
-    SETTINGS_MENU,
-    SET_PRESSURE_TIMEOUT,
-    SET_MOTOR_TIMEOUT,
-    SET_RELEASE_TIMEOUT,
-    SET_FAN_SPEED,
-    SET_LIGHTS,
+  HOME,
+  SETTINGS_MENU,
+  SET_PRESSURE_TIMEOUT_DISPLAY,
+  SET_MOTOR_TIMEOUT_DISPLAY,
+  SET_RELEASE_TIMEOUT_DISPLAY,
+  SET_FAN_SPEED_DISPLAY,
 };
 
 extern SemaphoreHandle_t displayDataMutex;
