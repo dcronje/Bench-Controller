@@ -12,6 +12,7 @@
 #define GREEN RGB_COLOR8(0, 255, 0)     // No red, max green, no blue
 #define BLUE RGB_COLOR8(0, 0, 255)      // No red, no green, max blue
 #define ORANGE RGB_COLOR8(255, 255, 0)  // Max red, some green, no blue
+#define PURPLE RGB_COLOR8(255, 0, 255)  // Max red, no green, no blue
 #define WHITE RGB_COLOR8(255, 255, 255) // Max red, max green, max blue
 #define BLACK RGB_COLOR8(0, 0, 0)       // No red, no green, no blue
 
@@ -32,7 +33,5 @@ enum DisplayType
   SET_RELEASE_TIMEOUT_DISPLAY,
   SET_FAN_SPEED_DISPLAY,
 };
-
-extern SemaphoreHandle_t displayDataMutex;
 
 #endif // DISPLAY_H

@@ -268,6 +268,11 @@ std::string messageToString(const Message &msg)
 
 void sendOnCommand()
 {
+  if (networkStatus != NetworkStatus::CLIENT_CONNECTED)
+  {
+    printf("NO CLIENT AVAILABLE FOR COMMAND\n");
+    return;
+  }
   Message msg;
   msg.messageType = COMMAND;
   msg.command.commandType = ON;
@@ -279,6 +284,11 @@ void sendOnCommand()
 
 void sendOffCommand()
 {
+  if (networkStatus != NetworkStatus::CLIENT_CONNECTED)
+  {
+    printf("NO CLIENT AVAILABLE FOR COMMAND\n");
+    return;
+  }
   Message msg;
   msg.messageType = COMMAND;
   msg.command.commandType = OFF;
@@ -290,6 +300,11 @@ void sendOffCommand()
 
 void sendGetStatusCommand()
 {
+  if (networkStatus != NetworkStatus::CLIENT_CONNECTED)
+  {
+    printf("NO CLIENT AVAILABLE FOR COMMAND\n");
+    return;
+  }
   Message msg;
   msg.messageType = COMMAND;
   msg.command.commandType = GET_STATUS;
@@ -301,6 +316,11 @@ void sendGetStatusCommand()
 
 void sendSetPressureTimeoutCommand(int minutes)
 {
+  if (networkStatus != NetworkStatus::CLIENT_CONNECTED)
+  {
+    printf("NO CLIENT AVAILABLE FOR COMMAND\n");
+    return;
+  }
   Message msg;
   msg.messageType = COMMAND;
   msg.command.commandType = SET_PRESSURE_TIMEOUT;
@@ -313,6 +333,11 @@ void sendSetPressureTimeoutCommand(int minutes)
 
 void sendSetMotorTimeoutCommand(int minutes)
 {
+  if (networkStatus != NetworkStatus::CLIENT_CONNECTED)
+  {
+    printf("NO CLIENT AVAILABLE FOR COMMAND\n");
+    return;
+  }
   Message msg;
   msg.messageType = COMMAND;
   msg.command.commandType = SET_MOTOR_TIMEOUT;
@@ -325,6 +350,11 @@ void sendSetMotorTimeoutCommand(int minutes)
 
 void sendSetSupplyTimeoutCommand(int minutes)
 {
+  if (networkStatus != NetworkStatus::CLIENT_CONNECTED)
+  {
+    printf("NO CLIENT AVAILABLE FOR COMMAND\n");
+    return;
+  }
   Message msg;
   msg.messageType = COMMAND;
   msg.command.commandType = SET_RELEASE_TIMEOUT;

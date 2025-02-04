@@ -1,10 +1,15 @@
 #include "settings.h"
+
 #include <stdio.h>
 #include <string.h>
+
 #include "pico/stdlib.h"
 #include "pico/flash.h"
 #include "hardware/flash.h"
 #include "hardware/structs/xip_ctrl.h"
+#include "FreeRTOS.h"
+#include "timers.h"
+#include "queue.h"
 
 // Global settings variable
 volatile Settings currentSettings = {
@@ -125,8 +130,9 @@ void resetSettings()
 // Initialize settings
 void initSettings()
 {
+  settingsQueue = xQueueCreate(10, sizeof(Settings));
   Settings localSettingsCopy;
-
+  bool didLoad = true;
   // Attempt to load settings from flash
   if (!loadSettingsFromFlash(&localSettingsCopy))
   {
@@ -140,14 +146,15 @@ void initSettings()
         .fanSpeed = currentSettings.fanSpeed, // DO NOT RESET
         .magic = SETTINGS_MAGIC,
     };
-
-    // Save defaults to flash
-    saveSettingsToFlash(&localSettingsCopy);
+    didLoad = false;
   }
 
   // Copy loaded settings to the global `currentSettings`
   memcpy((Settings *)&currentSettings, &localSettingsCopy, sizeof(Settings));
-
+  if (!didLoad)
+  {
+    requestSettingsUpdate();
+  }
   // Create the settings queue
   settingsQueue = xQueueCreate(5, sizeof(SettingsCommandType));
   if (settingsQueue == NULL)

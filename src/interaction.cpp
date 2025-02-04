@@ -10,6 +10,7 @@
 #include "pico/stdlib.h"
 #include "FreeRTOS.h"
 #include "timers.h"
+#include "queue.h"
 
 SemaphoreHandle_t interactionQueue = NULL;
 
@@ -82,7 +83,7 @@ void handleButtonISR(uint gpio, uint32_t events)
   {
     if (events & GPIO_IRQ_EDGE_FALL && extractorButtonDown == 0)
     {
-      printf("COMPRESSOR BUTTON DOWN\n");
+      printf("EXTRACTOR BUTTON DOWN\n");
       extractorButtonDown = 1;
       extractorPressStartTime = xTaskGetTickCount(); // Get current tick count as the start time
       extractorLongPressHandled = false;
@@ -90,7 +91,7 @@ void handleButtonISR(uint gpio, uint32_t events)
     }
     else if (events & GPIO_IRQ_EDGE_RISE && extractorButtonDown == 1)
     {
-      printf("COMPRESSOR BUTTON UP\n");
+      printf("EXTRACTOR BUTTON UP\n");
       extractorButtonDown = 0;
       xTimerStopFromISR(extractorLongPressTimer, 0);
       if (!extractorLongPressHandled)
@@ -186,6 +187,7 @@ void compressorLongPressCallback(TimerHandle_t xTimer)
 
 void extractorLongPressCallback(TimerHandle_t xTimer)
 {
+  printf("EXTRACTOR LONG PRESS CALLBACK\n");
   Interaction action = EXTRACTOR_LONG_PRESS;
   xQueueSendFromISR(interactionQueue, &action, NULL);
   extractorLongPressHandled = true;
@@ -213,6 +215,8 @@ void initInteraction()
   gpio_set_irq_enabled(COMPRESSOR_BUTTON_GPIO, GPIO_IRQ_EDGE_FALL | GPIO_IRQ_EDGE_RISE, true);
   gpio_set_irq_enabled(EXTRACTOR_BUTTON_GPIO, GPIO_IRQ_EDGE_FALL | GPIO_IRQ_EDGE_RISE, true);
 
+  interactionQueue = xQueueCreate(50, sizeof(Interaction));
+
   enterLongPressTimer = xTimerCreate("EnterLongPressTimer", pdMS_TO_TICKS(LONG_PRESS_THRESHOLD), pdFALSE, 0, enterLongPressCallback);
   compressorLongPressTimer = xTimerCreate("CompressorLongPressTimer", pdMS_TO_TICKS(LONG_PRESS_THRESHOLD), pdFALSE, 0, compressorLongPressCallback);
   extractorLongPressTimer = xTimerCreate("ExtractorLongPressTimer", pdMS_TO_TICKS(LONG_PRESS_THRESHOLD), pdFALSE, 0, extractorLongPressCallback);
@@ -228,22 +232,27 @@ void interactionTask(void *pvParameters)
     {
       if (interaction == ENTER)
       {
+        printf("ENTER COMMAND\n");
         displayEnter();
       }
       else if (interaction == BACK)
       {
+        printf("BACK COMMAND\n");
         displayBack();
       }
       else if (interaction == UP)
       {
+        printf("UP COMMAND\n");
         displayUp();
       }
       else if (interaction == DOWN)
       {
+        printf("DOWN COMMAND\n");
         displayDown();
       }
       else if (interaction == COMPRESSOR)
       {
+        printf("COMPRESSOR COMMAND\n");
         if (g_compressorStatus.compressorOn)
         {
           sendOffCommand();
@@ -255,14 +264,17 @@ void interactionTask(void *pvParameters)
       }
       else if (interaction == COMPRESSOR_LONG_PRESS)
       {
+        printf("COMPRESSOR MENU COMMAND\n");
         // TODO: compressor settings
       }
       else if (interaction == EXTRACTOR)
       {
+        printf("EXTRACTOR COMMAND\n");
         // TODO: turn extractor on off
       }
-      else if (interaction == COMPRESSOR_LONG_PRESS)
+      else if (interaction == EXTRACTOR_LONG_PRESS)
       {
+        printf("EXTRACTOR MENU COMMAND\n");
         // TODO: extractor settings
       }
     }

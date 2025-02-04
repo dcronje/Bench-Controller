@@ -4,7 +4,6 @@
 #include "httpserver.h"
 #include "settings.h"
 #include "control.h"
-#include "ws2812.pio.h"
 
 #include <cstdio>
 #include <string>
@@ -14,7 +13,6 @@
 #include "task.h"
 #include "queue.h"
 #include "event_groups.h"
-#include "hardware/pio.h"
 
 #include "lwip/apps/httpd.h"
 #include "lwip/apps/mdns.h"
@@ -54,17 +52,10 @@ volatile bool isFlashing = false;
 volatile bool mdnsAp = false;
 volatile bool mdnsSta = false;
 
-PIO pio;
-uint sm;
-
 static s8_t mdnsServiceHandleSta = -1;
 static s8_t mdnsServiceHandleAp = -1;
 
-void sendSS2812Color(PIO pio, uint sm, uint32_t rgb_color)
-{
-  uint32_t encoded_color = ((rgb_color >> 8 & 0xFF) << 16) | ((rgb_color >> 16 & 0xFF) << 8) | (rgb_color & 0xFF); // GRB format
-  pio_sm_put_blocking(pio, sm, encoded_color << 8 | 0x7);                                                          // 24 bits + 1 extra to meet reset condition
-}
+volatile NetworkStatus networkStatus = NetworkStatus::STARTUP;
 
 void printSettings(const volatile Settings *settings)
 {
@@ -630,7 +621,7 @@ void serverSocketTask(void *params)
     return;
   }
   printf("Server: Listening for connections...\n");
-
+  networkStatus = NetworkStatus::SOCKET_RUNNING;
   while (true)
   {
     struct sockaddr_in clientAddr;
@@ -661,6 +652,7 @@ void serverSocketTask(void *params)
 
     bool clientConnected = true;
 
+    networkStatus = NetworkStatus::CLIENT_CONNECTED;
     sendGetStatusCommand();
 
     std::string messageBuffer;
@@ -754,6 +746,7 @@ void serverSocketTask(void *params)
 
 void handleStartup()
 {
+  networkStatus = NetworkStatus::STARTUP;
   initSTAMode();
   if (hasCredentials() && connectToWifiWithCredentials())
   {
@@ -772,6 +765,7 @@ void handleStartup()
 
 void handleWifiFailed()
 {
+  networkStatus = NetworkStatus::AP_MODE;
   deInitSTAMode();
   initAPMode();
   xTaskCreate(credentialsTask, "CredentialsTask", 1024, NULL, tskIDLE_PRIORITY + 1, NULL);
@@ -795,6 +789,7 @@ void handleConfigured()
 
 void handleWifiConnected()
 {
+  networkStatus = NetworkStatus::WIFI_CONNECTED;
   initSocket();
 }
 
@@ -822,48 +817,8 @@ void handleSocketServerFailed()
   }
 }
 
-void updateLedColor()
-{
-  if (isConnectedToSocketServer)
-  {
-    sendSS2812Color(pio, sm, 0x00FF00); // Green
-  }
-  else if (isConnectedToWifi)
-  {
-    sendSS2812Color(pio, sm, 0xFFFF00); // Orange
-  }
-  else if (isTestingConnection)
-  {
-    sendSS2812Color(pio, sm, isFlashing ? 0x000000 : 0xFFFF00); // Flashing Orange
-    isFlashing = !isFlashing;
-  }
-  else if (isAppModeActive)
-  {
-    sendSS2812Color(pio, sm, 0x0000FF); // Blue
-  }
-  else
-  {
-    sendSS2812Color(pio, sm, 0xFFFFFF); // White
-  }
-}
-
 void initWifi()
 {
-  pio = pio0;
-
-  // Load the WS2812 program into the PIO memory
-  uint offset = pio_add_program(pio, &ws2812_program);
-
-  // Configure the PIO state machine
-  pio_sm_config c = ws2812_program_get_default_config(offset);
-  sm_config_set_out_pins(&c, WS2812_GPIO, 1);  // Set output pin
-  sm_config_set_sideset_pins(&c, WS2812_GPIO); // Set side-set pin (optional, only if used)
-  sm_config_set_clkdiv(&c, 2.0f);              // Set clock divider to adjust data rate
-
-  sm = pio_claim_unused_sm(pio, true); // Claim a state machine
-  pio_sm_init(pio, sm, offset, &c);    // Initialize the state machine with configuration
-  pio_sm_set_enabled(pio, sm, true);   // Enable the state machine
-
   eventGroup = xEventGroupCreate();
   incommingMessageQueue = xQueueCreate(5, sizeof(Message));
   if (incommingMessageQueue == NULL)
@@ -923,14 +878,5 @@ void wifiTask(void *params)
       printf("HANDLE SOCKET DISCONNECTED\n");
       handleSocketServerFailed();
     }
-  }
-}
-
-void ledTask(void *params)
-{
-  while (1)
-  {
-    updateLedColor();
-    vTaskDelay(pdMS_TO_TICKS(1000));
   }
 }

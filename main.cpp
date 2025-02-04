@@ -58,23 +58,23 @@ int main()
     printf("Starting FreeRTOS with Watchdog...\n");
 
     // Initialize the watchdog with a timeout, this will reset the system if not regularly kicked
-    watchdog_enable(WATCHDOG_TIMEOUT_MS, 1);
 
-    initSettings();
-    initControl();
-    initWifi();
-    initSensors();
     initDisplay();
+    initSettings();
+    // initControl();
+    initWifi();
+    // initSensors();
     initInteraction();
 
     // requestSettingsReset();
+    watchdog_enable(WATCHDOG_TIMEOUT_MS, 1);
 
+    xTaskCreate(displayTask, "DisplayTask", 256, NULL, tskIDLE_PRIORITY + 2, NULL);
     xTaskCreate(wifiTask, "WiFiTask", 4096, NULL, configMAX_PRIORITIES - 1, NULL);
     xTaskCreate(settingsTask, "SettingsTask", 256, NULL, tskIDLE_PRIORITY + 1, NULL);
-    xTaskCreate(ledTask, "LedTask", 256, NULL, tskIDLE_PRIORITY, NULL);
-    xTaskCreate(controlTask, "ControlTask", 256, NULL, tskIDLE_PRIORITY + 2, NULL);
-    xTaskCreate(sensorTask, "SensorsTask", 256, NULL, tskIDLE_PRIORITY + 2, NULL);
-    xTaskCreate(displayTask, "DisplayTask", 512, NULL, tskIDLE_PRIORITY + 1, NULL);
+    // xTaskCreate(controlTask, "ControlTask", 256, NULL, tskIDLE_PRIORITY + 2, NULL);
+    // xTaskCreate(sensorTask, "SensorsTask", 256, NULL, tskIDLE_PRIORITY + 2, NULL);
+
     xTaskCreate(interactionTask, "InteractionTask", 256, NULL, tskIDLE_PRIORITY + 2, NULL);
     xTaskCreate(watchdogKickTask, "WatchdogTask", 256, NULL, tskIDLE_PRIORITY + 1, NULL);
 

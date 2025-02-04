@@ -23,9 +23,21 @@ typedef struct
   int auth_mode; // New field for authentication mode
 } WifiScanResult;
 
+typedef enum
+{
+  CLIENT_CONNECTED,
+  SOCKET_RUNNING,
+  WIFI_CONNECTED,
+  AP_MODE,
+  ERROR,
+  STARTUP,
+} NetworkStatus;
+
 extern WifiScanResult topScanResults[MAX_SCAN_RESULTS];
 extern int scanResultCount;
 extern QueueHandle_t outgoingMessageQueue;
+
+extern volatile NetworkStatus networkStatus;
 
 void initWifi();
 void disconnectAndForgetWifi();

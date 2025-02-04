@@ -18,6 +18,7 @@ volatile float lightsCTemp = 0.0f;
 
 volatile float boothTemp = 0.0f;
 volatile float boothHumidity = 0.0f;
+volatile float boothLux = 0.0f;
 
 One_wire lightsATempSensor(LIGHTS_A_TEMP_GPIO); // Internal sensor 2
 One_wire lightsBTempSensor(LIGHTS_B_TEMP_GPIO); // Internal sensor 2
@@ -29,11 +30,11 @@ void initSensors(void)
   lightsBTempSensor.init();
   lightsCTempSensor.init();
 
-  i2c_init(SENSOR_I2C_PORT, SHT30_I2C_FREQ); // Use the frequency constant
-  gpio_set_function(SHT30_I2C_SDA_GPIO, GPIO_FUNC_I2C);
-  gpio_set_function(SHT30_I2C_SCL_GPIO, GPIO_FUNC_I2C);
-  gpio_pull_up(SHT30_I2C_SDA_GPIO);
-  gpio_pull_up(SHT30_I2C_SCL_GPIO);
+  i2c_init(SENSOR_I2C_PORT, SENSORS_I2C_FREQ); // Use the frequency constant
+  gpio_set_function(SENSORS_I2C_SDA_GPIO, GPIO_FUNC_I2C);
+  gpio_set_function(SENSORS_I2C_SCL_GPIO, GPIO_FUNC_I2C);
+  // gpio_pull_up(SENSORS_I2C_SDA_GPIO);
+  // gpio_pull_up(SENSORS_I2C_SCL_GPIO);
 
   uint8_t buffer[2];
   buffer[0] = SHT30_CMD_MEASURE_HIGHREP >> 8;
