@@ -54,10 +54,16 @@ add_executable(bench-controller
     src/display.cpp
     src/interaction.cpp
     src/extractor.cpp
+    src/lights.cpp
     src/isr-handlers.cpp
     src/bme280.cpp
     src/max44009.cpp
     src/sht30.cpp
+    src/pwm.pio
+)
+
+pico_generate_pio_header(bench-controller ${CMAKE_CURRENT_LIST_DIR}/src/pwm.pio
+    OUTPUT_DIR ${CMAKE_CURRENT_LIST_DIR}/include
 )
 
 pico_set_program_name(bench-controller "bench-controller")

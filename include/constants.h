@@ -44,6 +44,10 @@ const int LIGHTS_A_TEMP_GPIO = 3;
 const int LIGHTS_B_TEMP_GPIO = 5;
 const int LIGHTS_C_TEMP_GPIO = 7;
 
+const int LIGHTS_A_PWM_GPIO = 4;
+const int LIGHTS_B_PWM_GPIO = 6;
+const int LIGHTS_C_PWM_GPIO = 8;
+
 const uint8_t BME280_I2C_ADDR = 0x76;   // Default I2C address for BME280
 const uint8_t MAX44009_I2C_ADDR = 0x4A; // Default I2C address for MAX44009
 const uint8_t SHT30_I2C_ADDR = 0x44;
