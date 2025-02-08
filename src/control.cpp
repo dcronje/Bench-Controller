@@ -10,6 +10,7 @@
 #include "FreeRTOS.h"
 #include "queue.h"
 #include "task.h"
+#include "display.h"
 
 QueueHandle_t incommingMessageQueue = NULL;
 
@@ -270,6 +271,7 @@ void sendOnCommand()
 {
   if (networkStatus != NetworkStatus::CLIENT_CONNECTED)
   {
+    alertCompressor(3);
     printf("NO CLIENT AVAILABLE FOR COMMAND\n");
     return;
   }
@@ -287,6 +289,7 @@ void sendOffCommand()
   if (networkStatus != NetworkStatus::CLIENT_CONNECTED)
   {
     printf("NO CLIENT AVAILABLE FOR COMMAND\n");
+    alertCompressor(3);
     return;
   }
   Message msg;
@@ -303,6 +306,7 @@ void sendGetStatusCommand()
   if (networkStatus != NetworkStatus::CLIENT_CONNECTED)
   {
     printf("NO CLIENT AVAILABLE FOR COMMAND\n");
+    alertCompressor(3);
     return;
   }
   Message msg;
@@ -319,6 +323,7 @@ void sendSetPressureTimeoutCommand(int minutes)
   if (networkStatus != NetworkStatus::CLIENT_CONNECTED)
   {
     printf("NO CLIENT AVAILABLE FOR COMMAND\n");
+    alertCompressor(3);
     return;
   }
   Message msg;
@@ -336,6 +341,7 @@ void sendSetMotorTimeoutCommand(int minutes)
   if (networkStatus != NetworkStatus::CLIENT_CONNECTED)
   {
     printf("NO CLIENT AVAILABLE FOR COMMAND\n");
+    alertCompressor(3);
     return;
   }
   Message msg;
@@ -353,6 +359,7 @@ void sendSetSupplyTimeoutCommand(int minutes)
   if (networkStatus != NetworkStatus::CLIENT_CONNECTED)
   {
     printf("NO CLIENT AVAILABLE FOR COMMAND\n");
+    alertCompressor(3);
     return;
   }
   Message msg;

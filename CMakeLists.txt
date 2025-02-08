@@ -53,6 +53,11 @@ add_executable(bench-controller
     src/compressor-status.cpp
     src/display.cpp
     src/interaction.cpp
+    src/extractor.cpp
+    src/isr-handlers.cpp
+    src/bme280.cpp
+    src/max44009.cpp
+    src/sht30.cpp
 )
 
 pico_set_program_name(bench-controller "bench-controller")
@@ -75,6 +80,7 @@ target_link_libraries(bench-controller
     pico_lwip_http
     pico_lwip_mdns
     hardware_i2c
+    hardware_pwm
     FreeRTOS-Kernel-Heap4
     cjson
     pico_one_wire

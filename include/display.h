@@ -21,17 +21,30 @@ void displayUp();
 void displayDown();
 void displayEnter();
 void displayBack();
+void displayCompressorSettingsMenu();
+void displayExtractorSettingsMenu();
+void displayLightsSettingsMenu();
+void alertCompressor(int flashes);
+void alertExtractor(int flashes);
+void alertLights(int flashes);
 
 void displayTask(void *params);
 
 enum DisplayType
 {
   HOME,
-  SETTINGS_MENU,
+  COMPRESSOR_SETTINGS_MENU,
+  EXTRACTOR_SETTINGS_MENU,
+  LIGHTS_SETTINGS_MENU,
   SET_PRESSURE_TIMEOUT_DISPLAY,
   SET_MOTOR_TIMEOUT_DISPLAY,
   SET_RELEASE_TIMEOUT_DISPLAY,
   SET_FAN_SPEED_DISPLAY,
+  SET_MAX_LIGHTS,
+  SET_LIGHT_COOLING,
+  COMPRESSOR_STATS,
+  EXTRACTOR_STATS,
+  LIGHTS_STATS,
 };
 
 #endif // DISPLAY_H

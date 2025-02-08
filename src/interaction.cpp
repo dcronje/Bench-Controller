@@ -2,6 +2,8 @@
 #include "display.h"
 #include "compressor-status.h"
 #include "control.h"
+#include "isr-handlers.h"
+#include "extractor.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,100 +14,92 @@
 #include "timers.h"
 #include "queue.h"
 
-SemaphoreHandle_t interactionQueue = NULL;
+#define DEBOUNCE_TIME_MS 50
+#define LONG_PRESS_TIME_MS 500
+#define QUEUE_WAIT_TIME_MS 100
 
+SemaphoreHandle_t interactionQueue = NULL;
 volatile int32_t encoderPosition = 0;
 
-TimerHandle_t enterLongPressTimer = NULL;
-TimerHandle_t compressorLongPressTimer = NULL;
-TimerHandle_t extractorLongPressTimer = NULL;
+TimerHandle_t debounceTimers[3];
+TimerHandle_t longPressTimers[3];
+volatile bool buttonStates[3] = {0};         // 0 for up, 1 for down
+volatile bool longPressHandled[3] = {false}; // Track if long press has been handled
 
-volatile int32_t enterButtonDown = 0;
-volatile int32_t compressorButtonDown = 0;
-volatile int32_t extractorButtonDown = 0;
+void debounceTimerCallback(TimerHandle_t xTimer);
+void longPressTimerCallback(TimerHandle_t xTimer);
 
-static uint32_t enterPressStartTime = 0;
-static uint32_t compressorPressStartTime = 0;
-static uint32_t extractorPressStartTime = 0;
+void initInteraction()
+{
+  interactionQueue = xQueueCreate(10, sizeof(Interaction));
+  gpio_init(ENCODER_CLK_GPIO);
+  gpio_init(ENCODER_DC_GPIO);
+  gpio_set_dir(ENCODER_CLK_GPIO, GPIO_IN);
+  gpio_set_dir(ENCODER_DC_GPIO, GPIO_IN);
 
-static bool enterLongPressHandled = false;
-static bool compressorLongPressHandled = false;
-static bool extractorLongPressHandled = false;
+  gpio_set_irq_enabled(ENCODER_CLK_GPIO, GPIO_IRQ_EDGE_FALL | GPIO_IRQ_EDGE_RISE, true);
+  gpio_set_irq_enabled(ENCODER_DC_GPIO, GPIO_IRQ_EDGE_FALL | GPIO_IRQ_EDGE_RISE, true);
+
+  const uint gpio_buttons[3] = {ENTER_SW_GPIO, COMPRESSOR_BUTTON_GPIO, EXTRACTOR_BUTTON_GPIO};
+  for (int i = 0; i < 3; i++)
+  {
+    debounceTimers[i] = xTimerCreate("DebounceTimer", pdMS_TO_TICKS(DEBOUNCE_TIME_MS), pdFALSE, (void *)(uintptr_t)i, debounceTimerCallback);
+    longPressTimers[i] = xTimerCreate("LongPressTimer", pdMS_TO_TICKS(LONG_PRESS_TIME_MS), pdFALSE, (void *)(uintptr_t)i, longPressTimerCallback);
+    gpio_init(gpio_buttons[i]);
+    gpio_set_dir(gpio_buttons[i], GPIO_IN);
+    gpio_pull_up(gpio_buttons[i]); // Assuming active low buttons
+    gpio_set_irq_enabled(gpio_buttons[i], GPIO_IRQ_EDGE_FALL | GPIO_IRQ_EDGE_RISE, true);
+  }
+}
 
 void handleButtonISR(uint gpio, uint32_t events)
 {
-  Interaction action = NONE;
-  if (gpio == ENTER_SW_GPIO)
+  int index = (gpio == ENTER_SW_GPIO ? 0 : (gpio == COMPRESSOR_BUTTON_GPIO ? 1 : 2));
+  BaseType_t higherPriorityTaskWoken = pdFALSE;
+
+  // Start or reset the debounce timer
+  xTimerResetFromISR(debounceTimers[index], &higherPriorityTaskWoken);
+}
+
+void debounceTimerCallback(TimerHandle_t xTimer)
+{
+  int index = (int)(uintptr_t)pvTimerGetTimerID(xTimer);
+  uint gpio = (index == 0 ? ENTER_SW_GPIO : (index == 1 ? COMPRESSOR_BUTTON_GPIO : EXTRACTOR_BUTTON_GPIO));
+
+  // Check the stable state of the button
+  bool currentLevel = gpio_get(gpio) == 0; // Assuming active low
+  if (currentLevel != buttonStates[index])
   {
-    if (events & GPIO_IRQ_EDGE_FALL && enterButtonDown == 0)
+    buttonStates[index] = currentLevel;
+    if (currentLevel)
     {
-      printf("ENTER BUTTON DOWN\n");
-      enterButtonDown = 1;
-      enterPressStartTime = xTaskGetTickCount(); // Get current tick count as the start time
-      enterLongPressHandled = false;
-      xTimerStartFromISR(enterLongPressTimer, 0);
+      // Button press detected
+      xTimerStart(longPressTimers[index], 0); // Start long press timer
+      longPressHandled[index] = false;
     }
-    else if (events & GPIO_IRQ_EDGE_RISE && enterButtonDown == 1)
+    else
     {
-      printf("ENTER BUTTON UP\n");
-      enterButtonDown = 0;
-      xTimerStopFromISR(enterLongPressTimer, 0);
-      if (!enterLongPressHandled)
+      // Button release detected
+      xTimerStop(longPressTimers[index], 0);
+      if (!longPressHandled[index])
       {
-        // Only send ENTER if long press was not handled
-        action = ENTER;
+        // Short press detected
+        Interaction action = (index == 0 ? ENTER : (index == 1 ? COMPRESSOR : EXTRACTOR));
+        xQueueSendFromISR(interactionQueue, &action, NULL);
       }
     }
-  }
-  else if (gpio == COMPRESSOR_BUTTON_GPIO)
-  {
-    if (events & GPIO_IRQ_EDGE_FALL && compressorButtonDown == 0)
-    {
-      printf("COMPRESSOR BUTTON DOWN\n");
-      compressorButtonDown = 1;
-      compressorPressStartTime = xTaskGetTickCount(); // Get current tick count as the start time
-      compressorLongPressHandled = false;
-      xTimerStartFromISR(compressorLongPressTimer, 0);
-    }
-    else if (events & GPIO_IRQ_EDGE_RISE && compressorButtonDown == 1)
-    {
-      printf("COMPRESSOR BUTTON UP\n");
-      compressorButtonDown = 0;
-      xTimerStopFromISR(compressorLongPressTimer, 0);
-      if (!compressorLongPressHandled)
-      {
-        // Only send ENTER if long press was not handled
-        action = COMPRESSOR;
-      }
-    }
-  }
-  else if (gpio == EXTRACTOR_BUTTON_GPIO)
-  {
-    if (events & GPIO_IRQ_EDGE_FALL && extractorButtonDown == 0)
-    {
-      printf("EXTRACTOR BUTTON DOWN\n");
-      extractorButtonDown = 1;
-      extractorPressStartTime = xTaskGetTickCount(); // Get current tick count as the start time
-      extractorLongPressHandled = false;
-      xTimerStartFromISR(extractorLongPressTimer, 0);
-    }
-    else if (events & GPIO_IRQ_EDGE_RISE && extractorButtonDown == 1)
-    {
-      printf("EXTRACTOR BUTTON UP\n");
-      extractorButtonDown = 0;
-      xTimerStopFromISR(extractorLongPressTimer, 0);
-      if (!extractorLongPressHandled)
-      {
-        // Only send ENTER if long press was not handled
-        action = EXTRACTOR;
-      }
-    }
-  }
-  if (action != NONE)
-  {
-    xQueueSendFromISR(interactionQueue, &action, NULL);
   }
 }
+
+void longPressTimerCallback(TimerHandle_t xTimer)
+{
+  int index = (int)(uintptr_t)pvTimerGetTimerID(xTimer);
+  longPressHandled[index] = true;
+  Interaction action = (index == 0 ? BACK : (index == 1 ? COMPRESSOR_LONG_PRESS : EXTRACTOR_LONG_PRESS));
+  xQueueSendFromISR(interactionQueue, &action, NULL);
+}
+
+// Ensure the remaining part of your program initializes and uses these structures properly
 
 void handleEncoderISR(uint gpio, uint32_t events)
 {
@@ -151,75 +145,61 @@ void handleEncoderISR(uint gpio, uint32_t events)
   }
 }
 
-void sharedISR(uint gpio, uint32_t events)
+void handleInteraction(Interaction interaction)
 {
-  if (gpio == ENCODER_CLK_GPIO || gpio == ENCODER_DC_GPIO)
+  switch (interaction)
   {
-    handleEncoderISR(gpio, events);
+  case ENTER:
+    printf("ENTER COMMAND\n");
+    displayEnter();
+    break;
+  case BACK:
+    printf("BACK COMMAND\n");
+    displayBack();
+    break;
+  case UP:
+    printf("UP COMMAND\n");
+    displayUp();
+    break;
+  case DOWN:
+    printf("DOWN COMMAND\n");
+    displayDown();
+    break;
+  case COMPRESSOR:
+    printf("COMPRESSOR COMMAND\n");
+    if (g_compressorStatus.compressorOn)
+    {
+      sendOffCommand();
+    }
+    else
+    {
+      sendOnCommand();
+    }
+    break;
+  case COMPRESSOR_LONG_PRESS:
+    printf("COMPRESSOR MENU COMMAND\n");
+    displayCompressorSettingsMenu();
+    break;
+  case EXTRACTOR:
+    printf("EXTRACTOR COMMAND\n");
+    alertExtractor(3);
+    if (extractorOn)
+    {
+      stopExtractor();
+    }
+    else
+    {
+      startExtractor();
+    }
+    // TODO: turn extractor on off
+    break;
+  case EXTRACTOR_LONG_PRESS:
+    printf("EXTRACTOR MENU COMMAND\n");
+    displayExtractorSettingsMenu();
+    break;
+  default:
+    break;
   }
-  else if (gpio == ENTER_SW_GPIO)
-  {
-    handleButtonISR(gpio, events);
-  }
-  else if (gpio == COMPRESSOR_BUTTON_GPIO)
-  {
-    handleButtonISR(gpio, events);
-  }
-  else if (gpio == EXTRACTOR_BUTTON_GPIO)
-  {
-    handleButtonISR(gpio, events);
-  }
-}
-
-void enterLongPressCallback(TimerHandle_t xTimer)
-{
-  Interaction action = BACK;
-  xQueueSendFromISR(interactionQueue, &action, NULL);
-  enterLongPressHandled = true;
-}
-
-void compressorLongPressCallback(TimerHandle_t xTimer)
-{
-  Interaction action = COMPRESSOR_LONG_PRESS;
-  xQueueSendFromISR(interactionQueue, &action, NULL);
-  compressorLongPressHandled = true;
-}
-
-void extractorLongPressCallback(TimerHandle_t xTimer)
-{
-  printf("EXTRACTOR LONG PRESS CALLBACK\n");
-  Interaction action = EXTRACTOR_LONG_PRESS;
-  xQueueSendFromISR(interactionQueue, &action, NULL);
-  extractorLongPressHandled = true;
-}
-
-void initInteraction()
-{
-  gpio_init(ENCODER_CLK_GPIO);
-  gpio_init(ENCODER_DC_GPIO);
-  gpio_set_dir(ENCODER_CLK_GPIO, GPIO_IN);
-  gpio_set_dir(ENCODER_DC_GPIO, GPIO_IN);
-
-  gpio_init(ENTER_SW_GPIO);
-  gpio_set_dir(ENTER_SW_GPIO, GPIO_IN);
-
-  gpio_init(COMPRESSOR_BUTTON_GPIO);
-  gpio_set_dir(COMPRESSOR_BUTTON_GPIO, GPIO_IN);
-
-  gpio_init(EXTRACTOR_BUTTON_GPIO);
-  gpio_set_dir(EXTRACTOR_BUTTON_GPIO, GPIO_IN);
-
-  gpio_set_irq_enabled_with_callback(ENCODER_CLK_GPIO, GPIO_IRQ_EDGE_FALL | GPIO_IRQ_EDGE_RISE, true, &sharedISR);
-  gpio_set_irq_enabled(ENCODER_DC_GPIO, GPIO_IRQ_EDGE_FALL | GPIO_IRQ_EDGE_RISE, true);
-  gpio_set_irq_enabled(ENTER_SW_GPIO, GPIO_IRQ_EDGE_FALL | GPIO_IRQ_EDGE_RISE, true);
-  gpio_set_irq_enabled(COMPRESSOR_BUTTON_GPIO, GPIO_IRQ_EDGE_FALL | GPIO_IRQ_EDGE_RISE, true);
-  gpio_set_irq_enabled(EXTRACTOR_BUTTON_GPIO, GPIO_IRQ_EDGE_FALL | GPIO_IRQ_EDGE_RISE, true);
-
-  interactionQueue = xQueueCreate(50, sizeof(Interaction));
-
-  enterLongPressTimer = xTimerCreate("EnterLongPressTimer", pdMS_TO_TICKS(LONG_PRESS_THRESHOLD), pdFALSE, 0, enterLongPressCallback);
-  compressorLongPressTimer = xTimerCreate("CompressorLongPressTimer", pdMS_TO_TICKS(LONG_PRESS_THRESHOLD), pdFALSE, 0, compressorLongPressCallback);
-  extractorLongPressTimer = xTimerCreate("ExtractorLongPressTimer", pdMS_TO_TICKS(LONG_PRESS_THRESHOLD), pdFALSE, 0, extractorLongPressCallback);
 }
 
 void interactionTask(void *pvParameters)
@@ -227,56 +207,14 @@ void interactionTask(void *pvParameters)
   Interaction interaction = NONE;
   while (1)
   {
-    // Wait for data from ISR (blocking until data is available)
-    if (xQueueReceive(interactionQueue, &interaction, portMAX_DELAY))
+    if (xQueueReceive(interactionQueue, &interaction, pdMS_TO_TICKS(QUEUE_WAIT_TIME_MS)) == pdPASS)
     {
-      if (interaction == ENTER)
-      {
-        printf("ENTER COMMAND\n");
-        displayEnter();
-      }
-      else if (interaction == BACK)
-      {
-        printf("BACK COMMAND\n");
-        displayBack();
-      }
-      else if (interaction == UP)
-      {
-        printf("UP COMMAND\n");
-        displayUp();
-      }
-      else if (interaction == DOWN)
-      {
-        printf("DOWN COMMAND\n");
-        displayDown();
-      }
-      else if (interaction == COMPRESSOR)
-      {
-        printf("COMPRESSOR COMMAND\n");
-        if (g_compressorStatus.compressorOn)
-        {
-          sendOffCommand();
-        }
-        else
-        {
-          sendOnCommand();
-        }
-      }
-      else if (interaction == COMPRESSOR_LONG_PRESS)
-      {
-        printf("COMPRESSOR MENU COMMAND\n");
-        // TODO: compressor settings
-      }
-      else if (interaction == EXTRACTOR)
-      {
-        printf("EXTRACTOR COMMAND\n");
-        // TODO: turn extractor on off
-      }
-      else if (interaction == EXTRACTOR_LONG_PRESS)
-      {
-        printf("EXTRACTOR MENU COMMAND\n");
-        // TODO: extractor settings
-      }
+      // Process interaction commands
+      handleInteraction(interaction);
+    }
+    else
+    {
+      vPortYield();
     }
   }
 }

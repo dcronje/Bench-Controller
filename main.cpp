@@ -9,6 +9,8 @@
 #include "sensors.h"
 #include "display.h"
 #include "interaction.h"
+#include "isr-handlers.h"
+#include "extractor.h"
 
 #define WATCHDOG_TIMEOUT_MS 5000 // Watchdog timeout in milliseconds
 
@@ -55,6 +57,7 @@ void watchdogKickTask(void *params)
 int main()
 {
     stdio_init_all();
+    gpio_set_irq_callback(&sharedISR);
     printf("Starting FreeRTOS with Watchdog...\n");
 
     // Initialize the watchdog with a timeout, this will reset the system if not regularly kicked
@@ -63,20 +66,23 @@ int main()
     initSettings();
     // initControl();
     initWifi();
-    // initSensors();
+    initSensors();
     initInteraction();
+    initExtractor();
 
     // requestSettingsReset();
     watchdog_enable(WATCHDOG_TIMEOUT_MS, 1);
 
     xTaskCreate(displayTask, "DisplayTask", 256, NULL, tskIDLE_PRIORITY + 2, NULL);
-    xTaskCreate(wifiTask, "WiFiTask", 4096, NULL, configMAX_PRIORITIES - 1, NULL);
+    xTaskCreate(wifiTask, "WiFiTask", 4096, NULL, tskIDLE_PRIORITY + 3, NULL);
     xTaskCreate(settingsTask, "SettingsTask", 256, NULL, tskIDLE_PRIORITY + 1, NULL);
     // xTaskCreate(controlTask, "ControlTask", 256, NULL, tskIDLE_PRIORITY + 2, NULL);
-    // xTaskCreate(sensorTask, "SensorsTask", 256, NULL, tskIDLE_PRIORITY + 2, NULL);
+    xTaskCreate(lightSensorTask, "LightSensorsTask", 256, NULL, tskIDLE_PRIORITY + 2, NULL);
+    xTaskCreate(tempSensorTask, "TempSensorsTask", 256, NULL, tskIDLE_PRIORITY + 2, NULL);
+    xTaskCreate(extractorTask, "ExtractorSensorsTask", 256, NULL, tskIDLE_PRIORITY + 2, NULL);
 
-    xTaskCreate(interactionTask, "InteractionTask", 256, NULL, tskIDLE_PRIORITY + 2, NULL);
-    xTaskCreate(watchdogKickTask, "WatchdogTask", 256, NULL, tskIDLE_PRIORITY + 1, NULL);
+    xTaskCreate(interactionTask, "InteractionTask", 256, NULL, tskIDLE_PRIORITY + 3, NULL);
+    xTaskCreate(watchdogKickTask, "WatchdogTask", 256, NULL, tskIDLE_PRIORITY + 3, NULL);
 
     vTaskStartScheduler();
 

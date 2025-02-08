@@ -5,7 +5,8 @@
 #include "FreeRTOS.h"
 
 void initSensors(void);
-void sensorTask(void *params);
+void tempSensorTask(void *params);
+void lightSensorTask(void *params);
 
 // External variables (declarations only)
 extern volatile float lightsATemp;

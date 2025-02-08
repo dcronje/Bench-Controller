@@ -9,8 +9,9 @@
 #define LONG_PRESS_THRESHOLD 500 // 1 second threshold (in milliseconds)
 
 void initInteraction();
-void sharedISR(uint gpio, uint32_t events);
 void interactionTask(void *pvParameters);
+void handleEncoderISR(uint gpio, uint32_t events);
+void handleButtonISR(uint gpio, uint32_t events);
 
 extern QueueHandle_t interactionQueue;
 

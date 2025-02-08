@@ -6,6 +6,7 @@
 #include <math.h>
 #include "pico/stdlib.h"
 #include "pico/cyw43_arch.h"
+#include "hardware/i2c.h"
 
 #define SSID_MAX_LEN 32
 #define PASSWORD_MAX_LEN 64
@@ -18,9 +19,9 @@
 
 const int DISPLAY_SPI_CLK_GPIO = 18;  // SPI clock (SCK) – GPIO 18
 const int DISPLAY_SPI_MOSI_GPIO = 19; // SPI data (MOSI) – GPIO 19
-const int DISPLAY_SPI_CS_GPIO = 17;   // Chip Select (CS) – GPIO 17
-const int DISPLAY_SPI_DC_GPIO = 20;   // Data/Command (DC) – GPIO 14
-const int DISPLAY_SPI_RST_GPIO = 16;  // Reset (RST) – GPIO 13
+const int DISPLAY_SPI_CS_GPIO = 22;   // Chip Select (CS) – GPIO 17
+const int DISPLAY_SPI_DC_GPIO = 21;   // Data/Command (DC) – GPIO 14
+const int DISPLAY_SPI_RST_GPIO = 20;  // Reset (RST) – GPIO 13
 
 const int ENCODER_CLK_GPIO = 11; // Replace with your actual pin numbers
 const int ENCODER_DC_GPIO = 12;
@@ -39,24 +40,27 @@ const uint8_t SENSORS_I2C_SDA_GPIO = 14; // SDA pin for I²C communication
 const uint8_t SENSORS_I2C_SCL_GPIO = 15; // SCL pin for I²C communication
 const uint32_t SENSORS_I2C_FREQ = 100000;
 
-const uint8_t SHT30_I2C_ADDR = 0x44;               // SHT30 I²C address
-const uint16_t SHT30_CMD_MEASURE_HIGHREP = 0x2400; // High repeatability measurement command
-
-const uint8_t TSL2561_ADDRESS = 0x39;           // Default I2C address
-const uint8_t TSL2561_CMD_BIT = 0x80;           // Command bit
-const uint8_t TSL2561_CONTROL = 0x00;           // Control register
-const uint8_t TSL2561_TIMING = 0x01;            // Timing register
-const uint8_t TSL2561_THRESHOLD_LOWLOW = 0x02;  // Low threshold low byte
-const uint8_t TSL2561_INTERRUPT = 0x06;         // Interrupt control
-const uint8_t TSL2561_CHANNEL0_LOW = 0x0C;      // Channel 0 lower data register
-const uint8_t TSL2561_CHANNEL1_LOW = 0x0E;      // Channel 1 lower data register
-const uint8_t TSL2561_INTERRUPT_DISABLE = 0x00; // Value to disable interrupts
-
 const int LIGHTS_A_TEMP_GPIO = 3;
 const int LIGHTS_B_TEMP_GPIO = 5;
 const int LIGHTS_C_TEMP_GPIO = 7;
 
+const uint8_t BME280_I2C_ADDR = 0x76;   // Default I2C address for BME280
+const uint8_t MAX44009_I2C_ADDR = 0x4A; // Default I2C address for MAX44009
+const uint8_t SHT30_I2C_ADDR = 0x44;
+
+const float TEMP_HIGH = 25.0f;
+const float TEMP_LOW = 17.0f;
+
+const float HUMIDITY_HIGH = 60.0f;
+const float HUMIDITY_LOW = 40.0f;
+
+const float LUX_LOW = 600.0f;
+const float LUX_MEDIUM = 1000.0f;
+
+const int EXTRACTOR_PWM_GPIO = 16;
+const int EXTRACTOR_TACH_GPIO = 17;
+
 #define DISPLAY_SPI_PORT spi0
-#define SENSOR_I2C_PORT i2c1 // Change to i2c1 if needed
+#define SENSOR_I2C_PORT i2c1 // Assuming using i2c1 for sensors
 
 #endif // CONSTANTS_H

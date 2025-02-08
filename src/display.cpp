@@ -1,6 +1,7 @@
 #include "display.h"
 #include "constants.h"
 #include "settings.h"
+#include "sensors.h"
 #include "wifi.h"
 
 #include <stdio.h>
@@ -27,18 +28,47 @@ uint8_t canvasData[canvasWidth * canvasHeight];
 
 DisplaySSD1331_96x64x8_SPI display(DISPLAY_SPI_RST_GPIO, spiConfig);
 NanoCanvas8 canvas(canvasWidth, canvasHeight, canvasData);
-const char *settingsMenuItems[] = {
-    "Set Pressure Timeout",
-    "Set Motor Timeout",
-    "Set Release Timeout",
-    "Set Fan Speed",
-    "Set Lights",
+const char *compressorSettingsMenuItems[] = {
+    "P-Timeout",
+    "M-Timeout",
+    "R-Timeout",
+    "Stats",
 };
-static LcdGfxMenu settingsMenu(settingsMenuItems, sizeof(settingsMenuItems) / sizeof(char *), (NanoRect){{0, 0}, {0, 0}});
+static LcdGfxMenu compressorSettingsMenu(compressorSettingsMenuItems, sizeof(compressorSettingsMenuItems) / sizeof(char *), (NanoRect){{0, 0}, {0, 0}});
+
+const char *extactorSettingsMenuItems[] = {
+    "Speed",
+    "Stats",
+};
+static LcdGfxMenu extractorSettingsMenu(extactorSettingsMenuItems, sizeof(extactorSettingsMenuItems) / sizeof(char *), (NanoRect){{0, 0}, {0, 0}});
+
+const char *lightsSettingsMenuItems[] = {
+    "Max",
+    "Cooling",
+    "Stats",
+};
+static LcdGfxMenu lightsSettingsMenu(lightsSettingsMenuItems, sizeof(lightsSettingsMenuItems) / sizeof(char *), (NanoRect){{0, 0}, {0, 0}});
 
 volatile DisplayType currentDisplay = HOME;
 
 static bool flash = true;
+static bool displayMessage = false;
+static int compressorAlertCount = 0;
+static int extractorAlertCount = 0;
+static int lightsAlertCount = 0;
+
+void alertCompressor(int flashes)
+{
+  compressorAlertCount = flashes;
+}
+void alertExtractor(int flashes)
+{
+  extractorAlertCount = flashes;
+}
+void alertLights(int flashes)
+{
+  lightsAlertCount = flashes;
+}
 
 void flashTimerCallback(TimerHandle_t xTimer)
 {
@@ -203,11 +233,31 @@ void renderSetFanSpeed()
 
 void renderCompressor()
 {
+  static bool localFlash = false;
+  static bool fillRect = false;
+  if (compressorAlertCount > 0 && !fillRect)
+  {
+    fillRect = true;
+    compressorAlertCount--;
+  }
+  else if (fillRect)
+  {
+    fillRect = false;
+  }
+
+  canvas.setColor(RED);
+  if (fillRect)
+  {
+    canvas.fillRect(0, 0, 30, 32);
+  }
+  else
+  {
+    canvas.drawRect(0, 0, 30, 32);
+  }
+
   switch (networkStatus)
   {
   case NetworkStatus::STARTUP:
-    canvas.setColor(RED);
-    canvas.drawRect(0, 0, 30, 32);
     canvas.setColor(WHITE);
     canvas.setFixedFont(ssd1306xled_font6x8);
     canvas.printFixed(3, 8, "WIFI", STYLE_NORMAL);
@@ -215,8 +265,6 @@ void renderCompressor()
     canvas.printFixed(5, 19, "INIT", STYLE_NORMAL);
     break;
   case NetworkStatus::ERROR:
-    canvas.setColor(RED);
-    canvas.drawRect(0, 0, 30, 32);
     canvas.setColor(WHITE);
     canvas.setFixedFont(ssd1306xled_font6x8);
     canvas.printFixed(3, 8, "WIFI", STYLE_NORMAL);
@@ -228,8 +276,6 @@ void renderCompressor()
     }
     break;
   case NetworkStatus::AP_MODE:
-    canvas.setColor(RED);
-    canvas.drawRect(0, 0, 30, 32);
     canvas.setColor(WHITE);
     canvas.setFixedFont(ssd1306xled_font6x8);
     canvas.printFixed(3, 8, "WIFI", STYLE_NORMAL);
@@ -245,8 +291,6 @@ void renderCompressor()
     // TODO: Compressor
     break;
   case NetworkStatus::SOCKET_RUNNING:
-    canvas.setColor(RED);
-    canvas.drawRect(0, 0, 30, 32);
     canvas.setColor(WHITE);
     canvas.setFixedFont(ssd1306xled_font6x8);
     canvas.printFixed(3, 8, "SOCT", STYLE_NORMAL);
@@ -254,13 +298,11 @@ void renderCompressor()
     {
       canvas.setColor(GREEN);
       canvas.setFixedFont(ssd1306xled_font5x7);
-      canvas.printFixed(3, 19, "WAIT", STYLE_NORMAL);
+      canvas.printFixed(5, 19, "WAIT", STYLE_NORMAL);
     }
 
     break;
   case NetworkStatus::WIFI_CONNECTED:
-    canvas.setColor(RED);
-    canvas.drawRect(0, 0, 30, 32);
     canvas.setColor(WHITE);
     canvas.setFixedFont(ssd1306xled_font6x8);
     canvas.printFixed(3, 8, "SOCT", STYLE_NORMAL);
@@ -275,14 +317,106 @@ void renderCompressor()
 
 void renderExtractor()
 {
+  static bool localFlash = false;
+  static bool fillRect = false;
+  if (extractorAlertCount > 0 && !fillRect)
+  {
+    fillRect = true;
+    extractorAlertCount--;
+  }
+  else if (fillRect)
+  {
+    fillRect = false;
+  }
   canvas.setColor(ORANGE);
-  canvas.drawRect(33, 0, 63, 32);
+  if (fillRect)
+  {
+    canvas.fillRect(32, 0, 63, 32);
+  }
+  else
+  {
+    canvas.drawRect(32, 0, 63, 32);
+  }
 }
 
 void renderLights()
 {
+  static bool localFlash = false;
+  static bool fillRect = false;
+  if (lightsAlertCount > 0 && !fillRect)
+  {
+    fillRect = true;
+    lightsAlertCount--;
+  }
+  else if (fillRect)
+  {
+    fillRect = false;
+  }
   canvas.setColor(GREEN);
-  canvas.drawRect(65, 0, 95, 32);
+  if (fillRect)
+  {
+    canvas.fillRect(65, 0, 95, 32);
+  }
+  else
+  {
+    canvas.drawRect(65, 0, 95, 32);
+  }
+}
+
+void renderBottom()
+{
+  char buffer[32];
+  canvas.setFixedFont(ssd1306xled_font5x7);
+  canvas.setColor(WHITE);
+  canvas.printFixed(2, 36, "T:", STYLE_NORMAL);
+  if (boothTemp > TEMP_HIGH)
+  {
+    canvas.setColor(RED);
+  }
+  else if (boothTemp < TEMP_LOW)
+  {
+    canvas.setColor(ORANGE);
+  }
+  else
+  {
+    canvas.setColor(GREEN);
+  }
+  snprintf(buffer, sizeof(buffer), "%d", (int)boothTemp);
+  canvas.printFixed(12, 36, buffer, STYLE_BOLD);
+
+  canvas.setColor(WHITE);
+  canvas.printFixed(29, 36, "H:", STYLE_NORMAL);
+  if (boothHumidity > HUMIDITY_HIGH)
+  {
+    canvas.setColor(RED);
+  }
+  else if (boothHumidity < HUMIDITY_LOW)
+  {
+    canvas.setColor(ORANGE);
+  }
+  else
+  {
+    canvas.setColor(GREEN);
+  }
+  snprintf(buffer, sizeof(buffer), "%d%%", (int)boothHumidity);
+  canvas.printFixed(39, 36, buffer, STYLE_BOLD);
+
+  canvas.setColor(WHITE);
+  canvas.printFixed(60, 36, "L:", STYLE_NORMAL);
+  if (boothLux < LUX_LOW)
+  {
+    canvas.setColor(RED);
+  }
+  else if (boothLux < LUX_MEDIUM)
+  {
+    canvas.setColor(ORANGE);
+  }
+  else
+  {
+    canvas.setColor(GREEN);
+  }
+  snprintf(buffer, sizeof(buffer), "%d", (int)boothLux);
+  canvas.printFixed(70, 36, buffer, STYLE_BOLD);
 }
 
 void renderHome()
@@ -291,6 +425,7 @@ void renderHome()
   renderCompressor();
   renderExtractor();
   renderLights();
+  renderBottom();
   // Light
   // if (lightOn)
   // {
@@ -451,10 +586,20 @@ void displayUp()
     //     lightIntensity = 0;
     // }
   }
-  if (currentDisplay == SETTINGS_MENU)
+  if (currentDisplay == COMPRESSOR_SETTINGS_MENU)
   {
-    settingsMenu.up();
-    settingsMenu.show(display);
+    compressorSettingsMenu.up();
+    compressorSettingsMenu.show(display);
+  }
+  if (currentDisplay == EXTRACTOR_SETTINGS_MENU)
+  {
+    extractorSettingsMenu.up();
+    extractorSettingsMenu.show(display);
+  }
+  if (currentDisplay == LIGHTS_SETTINGS_MENU)
+  {
+    lightsSettingsMenu.up();
+    lightsSettingsMenu.show(display);
   }
   else if (currentDisplay == SET_PRESSURE_TIMEOUT_DISPLAY)
   {
@@ -500,10 +645,20 @@ void displayDown()
     //     lightIntensity = 100;
     // }
   }
-  else if (currentDisplay == SETTINGS_MENU)
+  if (currentDisplay == COMPRESSOR_SETTINGS_MENU)
   {
-    settingsMenu.down();
-    settingsMenu.show(display);
+    compressorSettingsMenu.down();
+    compressorSettingsMenu.show(display);
+  }
+  if (currentDisplay == EXTRACTOR_SETTINGS_MENU)
+  {
+    extractorSettingsMenu.down();
+    extractorSettingsMenu.show(display);
+  }
+  if (currentDisplay == LIGHTS_SETTINGS_MENU)
+  {
+    lightsSettingsMenu.down();
+    lightsSettingsMenu.show(display);
   }
   else if (currentDisplay == SET_PRESSURE_TIMEOUT_DISPLAY)
   {
@@ -545,23 +700,39 @@ void displayHome()
   renderHome();
 }
 
-void displaySettingsMenu()
+void displayCompressorSettingsMenu()
 {
-  currentDisplay = SETTINGS_MENU;
+  currentDisplay = COMPRESSOR_SETTINGS_MENU;
   display.setFixedFont(ssd1306xled_font6x8);
   display.clear();
-  settingsMenu.show(display);
+  compressorSettingsMenu.show(display);
+}
+
+void displayExtractorSettingsMenu()
+{
+  currentDisplay = EXTRACTOR_SETTINGS_MENU;
+  display.setFixedFont(ssd1306xled_font6x8);
+  display.clear();
+  extractorSettingsMenu.show(display);
+}
+
+void displayLightsSettingsMenu()
+{
+  currentDisplay = LIGHTS_SETTINGS_MENU;
+  display.setFixedFont(ssd1306xled_font6x8);
+  display.clear();
+  lightsSettingsMenu.show(display);
 }
 
 void displayEnter()
 {
   if (currentDisplay == HOME)
   {
-    // lightOn = !lightOn;
+    // TODO: on / off
   }
-  else if (currentDisplay == SETTINGS_MENU)
+  else if (currentDisplay == COMPRESSOR_SETTINGS_MENU)
   {
-    uint8_t selection = settingsMenu.selection();
+    uint8_t selection = compressorSettingsMenu.selection();
     if (selection == 0)
     {
       currentDisplay = SET_PRESSURE_TIMEOUT_DISPLAY;
@@ -576,14 +747,44 @@ void displayEnter()
     }
     else if (selection == 3)
     {
-      currentDisplay = SET_FAN_SPEED_DISPLAY;
-    }
-    else
-    {
-      displayBack();
+      currentDisplay = COMPRESSOR_STATS;
     }
   }
-  else if (currentDisplay == SET_PRESSURE_TIMEOUT_DISPLAY || currentDisplay == SET_MOTOR_TIMEOUT_DISPLAY || currentDisplay == SET_RELEASE_TIMEOUT_DISPLAY || currentDisplay == SET_FAN_SPEED_DISPLAY)
+  else if (currentDisplay == EXTRACTOR_SETTINGS_MENU)
+  {
+    uint8_t selection = extractorSettingsMenu.selection();
+    if (selection == 0)
+    {
+      currentDisplay = SET_FAN_SPEED_DISPLAY;
+    }
+    else if (selection == 1)
+    {
+      currentDisplay = EXTRACTOR_STATS;
+    }
+  }
+  else if (currentDisplay == LIGHTS_SETTINGS_MENU)
+  {
+    uint8_t selection = lightsSettingsMenu.selection();
+    if (selection == 0)
+    {
+      currentDisplay = SET_MAX_LIGHTS;
+    }
+    else if (selection == 1)
+    {
+      currentDisplay = SET_LIGHT_COOLING;
+    }
+    else if (selection == 2)
+    {
+      currentDisplay = LIGHTS_STATS;
+    }
+  }
+  else if (
+      currentDisplay == SET_PRESSURE_TIMEOUT_DISPLAY ||
+      currentDisplay == SET_MOTOR_TIMEOUT_DISPLAY ||
+      currentDisplay == SET_RELEASE_TIMEOUT_DISPLAY ||
+      currentDisplay == SET_FAN_SPEED_DISPLAY ||
+      currentDisplay == SET_MAX_LIGHTS ||
+      currentDisplay == SET_LIGHT_COOLING)
   {
     displayBack();
     // checkForSettingsChange();
@@ -595,15 +796,25 @@ void displayBack()
   printf("BACK!");
   if (currentDisplay == HOME)
   {
-    displaySettingsMenu();
+    displayLightsSettingsMenu();
   }
-  else if (currentDisplay == SETTINGS_MENU)
+  else if (currentDisplay == COMPRESSOR_SETTINGS_MENU || currentDisplay == EXTRACTOR_SETTINGS_MENU || currentDisplay == LIGHTS_SETTINGS_MENU)
   {
     displayHome();
   }
-  else if (currentDisplay == SET_PRESSURE_TIMEOUT_DISPLAY || currentDisplay == SET_MOTOR_TIMEOUT_DISPLAY || currentDisplay == SET_RELEASE_TIMEOUT_DISPLAY || currentDisplay == SET_FAN_SPEED_DISPLAY)
+  else if (currentDisplay == SET_PRESSURE_TIMEOUT_DISPLAY || currentDisplay == SET_MOTOR_TIMEOUT_DISPLAY || currentDisplay == SET_RELEASE_TIMEOUT_DISPLAY)
   {
-    displaySettingsMenu();
+    displayCompressorSettingsMenu();
+    // checkForSettingsChange();
+  }
+  else if (currentDisplay == SET_FAN_SPEED_DISPLAY)
+  {
+    displayExtractorSettingsMenu();
+    // checkForSettingsChange();
+  }
+  else if (currentDisplay == SET_MAX_LIGHTS || currentDisplay == SET_LIGHT_COOLING)
+  {
+    displayLightsSettingsMenu();
     // checkForSettingsChange();
   }
 }
