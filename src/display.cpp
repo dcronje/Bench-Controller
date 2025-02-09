@@ -3,6 +3,7 @@
 #include "settings.h"
 #include "sensors.h"
 #include "wifi.h"
+#include "extractor.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -337,6 +338,29 @@ void renderExtractor()
   {
     canvas.drawRect(32, 0, 63, 32);
   }
+  canvas.setFixedFont(ssd1306xled_font6x8);
+  if (extractorOn)
+  {
+    canvas.setColor(WHITE);
+    canvas.printFixed(41, 8, "ON", STYLE_NORMAL);
+  }
+  else
+  {
+    canvas.setColor(GREY);
+    canvas.printFixed(38, 8, "OFF", STYLE_NORMAL);
+  }
+  char buffer[32];
+  snprintf(buffer, sizeof(buffer), "%d%%", targetFanSpeed);
+  canvas.setFixedFont(ssd1306xled_font5x7);
+  if (currentFanSpeed != targetFanSpeed)
+  {
+    canvas.setColor(GREY);
+  }
+  else
+  {
+    canvas.setColor(WHITE);
+  }
+  canvas.printFixed(5, 19, buffer, STYLE_NORMAL);
 }
 
 void renderLights()

@@ -2,143 +2,144 @@
 #include "constants.h"
 #include "isr-handlers.h"
 #include "settings.h"
-#include "pwm.pio.h" // Make sure this includes the SDK's PWM PIO program
 
 #include "pico/stdlib.h"
-#include "hardware/pio.h"
-#include "hardware/clocks.h"
-#include "hardware/irq.h"
 #include "hardware/pwm.h"
+#include "hardware/irq.h"
 #include "FreeRTOS.h"
 #include "timers.h"
 #include "semphr.h"
 
-#define PWM_FREQUENCY 25000 // 25 kHz suitable for PC fans
+// Define constants
+#define PWM_FREQUENCY 25000    // 25 kHz suitable for PC fans
+#define SYSTEM_CLOCK 125000000 // 125 MHz system clock of the Raspberry Pi Pico
+#define CLOCK_DIV 1            // PWM clock divider (should be 1, 2, 4, 8, etc.)
 
 volatile int currentFanSpeed = 0;
+volatile int targetFanSpeed = 0;
 volatile uint64_t extractorRPM = 0;
 volatile bool extractorOn = false;
-volatile int targetFanSpeed = 0;
 volatile uint64_t pulseCount = 0;
 
 TimerHandle_t rpmTimer;
+// uint64_t lastTimerCall = 0;
+// SemaphoreHandle_t mutex;
 
+// Assuming deltaTime is in microseconds and we want RPM:
+// There are 60,000,000 microseconds in a minute.
+// If there are two pulses per revolution, the number of revolutions is pulseCount / 2.
 void rpmTimerCallback(TimerHandle_t xTimer)
 {
-  static uint64_t lastTime = 0;
-  uint64_t localPulseCount = pulseCount;
-  uint64_t currentTime = to_us_since_boot(get_absolute_time());
-  uint64_t deltaTime = currentTime - lastTime; // Calculate the elapsed time in microseconds
+  // static uint64_t lastTime = 0; // Ensure this is static or globally defined
 
-  if (lastTime != 0 && deltaTime > 0 && localPulseCount > 0)
-  {
-    uint64_t revolutions = localPulseCount / 2;           // Convert pulses to full revolutions
-    uint64_t rpm = revolutions * 60000000ULL / deltaTime; // Convert to RPM
-    printf("RPM: %llu\n", rpm);
-  }
-  else
-  {
-    printf("RPM: 0\n");
-  }
+  // uint64_t currentTime = to_us_since_boot(get_absolute_time());
+  // uint64_t deltaTime = currentTime - lastTime; // Calculate elapsed time in microseconds
 
-  lastTime = currentTime; // Update the last time stamp for the next calculation
-  pulseCount = 0;         // Reset pulse count for the next interval
-}
+  uint64_t revolutions = pulseCount / 2; // Two pulses per revolution
+  uint64_t rpm = revolutions * 60;       // * 1000000 / deltaTime; // Convert to RPM
 
-void pwmProgramInit(PIO pio, uint sm, uint offset, uint pin)
-{
-  uint32_t sys_clk_freq = clock_get_hz(clk_sys);                 // Get the system clock frequency
-  float divider = (float)sys_clk_freq / (PWM_FREQUENCY * 65536); // Calculate divider for a full 16-bit duty cycle range at 25kHz
+  // printf("Pulse Count: %llu, deltaTime: %llu us\n", pulseCount, deltaTime);
+  printf("RPM: %llu pulseCount: %d\n", rpm, pulseCount);
 
-  pio_gpio_init(pio, pin);
-  pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, true);
-
-  pio_sm_config c = pwm_program_get_default_config(offset);
-  sm_config_set_sideset_pins(&c, pin);
-  sm_config_set_clkdiv(&c, divider); // Set the clock divider to achieve the desired frequency
-  pio_sm_init(pio, sm, offset, &c);
-  pio_sm_set_enabled(pio, sm, true);
-}
-
-void configurePWMPIO(uint gpio)
-{
-  PIO pio = pio0;
-  uint sm = pio_claim_unused_sm(pio, true);
-  uint offset = pio_add_program(pio, &pwm_program);
-
-  pwmProgramInit(pio, sm, offset, gpio); // Initialize the PIO with the custom function
-
-  // Initialize PWM duty cycle to 0 (fan off)
-  pio_sm_put_blocking(pio, sm, 0);
-}
-
-void updateFanSpeedPIO(PIO pio, uint sm, int speed)
-{
-  uint duty_cycle = (speed * 65535) / 100;  // Convert speed percentage to duty cycle
-  pio_sm_put_blocking(pio, sm, duty_cycle); // Update the PIO with the new duty cycle
+  // lastTime = currentTime; // Update last time
+  pulseCount = 0; // Reset pulse count
 }
 
 void initExtractor(void)
 {
-  configurePWMPIO(EXTRACTOR_PWM_GPIO);
+  // mutex = xSemaphoreCreateMutex();
+  configurePWM(EXTRACTOR_PWM_GPIO);
   configureTachometer(EXTRACTOR_TACH_GPIO);
 
   rpmTimer = xTimerCreate("RPM Timer", pdMS_TO_TICKS(1000), pdTRUE, (void *)0, rpmTimerCallback);
   if (rpmTimer == NULL)
   {
+    // Handle error
     printf("Failed to create RPM timer\n");
   }
   else
   {
-    xTimerStart(rpmTimer, 0);
+    xTimerStart(rpmTimer, 0); // Start the timer
   }
 }
 
 void startExtractor(void)
 {
-  targetFanSpeed = 100; // Assume max speed for example
+  targetFanSpeed = 100; // currentSettings.fanSpeed
   extractorOn = true;
 }
 
 void stopExtractor(void)
 {
   targetFanSpeed = 0;
-  extractorOn = false;
+  extractorOn = false; // Ensure fan is actually stopping
 }
 
 void updateExtractorSpeed(void)
 {
   if (extractorOn)
   {
-    targetFanSpeed = currentSettings.fanSpeed; // Update target speed based on settings
+    targetFanSpeed = currentSettings.fanSpeed;
   }
 }
 
 void extractorTask(void *params)
 {
-  const TickType_t xDelay = pdMS_TO_TICKS(200);
-  PIO pio = pio0; // Assuming PIO0 is used
-  uint sm = 0;    // Assuming state machine 0 is used
-
+  const TickType_t xDelay = pdMS_TO_TICKS(100); // Increase delay for slower ramp
   while (1)
   {
     if (currentFanSpeed != targetFanSpeed)
     {
-      currentFanSpeed = targetFanSpeed; // Update speed directly for simplicity
+      if (currentFanSpeed < targetFanSpeed)
+      {
+        currentFanSpeed += 1;
+      }
+      else
+      {
+        currentFanSpeed -= 1;
+      }
     }
-    updateFanSpeedPIO(pio, sm, currentFanSpeed);
-    printf("FAN SPEED: %d RPM: %d\n", currentFanSpeed, extractorRPM);
+
+    // Set PWM level or drive it low if speed is zero
+    uint pwmLevel = (currentFanSpeed > 0) ? (currentFanSpeed * calculatePWMWrapValue(PWM_FREQUENCY)) / 100 : 0;
+    pwm_set_gpio_level(EXTRACTOR_PWM_GPIO, pwmLevel);
+
+    // printf("FAN SPEED: %d RPM: %d\n", currentFanSpeed, extractorRPM);
     vTaskDelay(xDelay);
   }
 }
 
-void configureTachometer(uint gpio)
+static void configurePWM(uint gpio)
 {
+  uint slice_num = pwm_gpio_to_slice_num(gpio);
+  gpio_set_function(gpio, GPIO_FUNC_PWM);
+
+  pwm_config config = pwm_get_default_config();
+  pwm_config_set_clkdiv(&config, CLOCK_DIV);
+  pwm_config_set_wrap(&config, calculatePWMWrapValue(PWM_FREQUENCY));
+
+  pwm_init(slice_num, &config, true);
+  pwm_set_gpio_level(gpio, 0); // Ensure fan starts off
+}
+
+static uint calculatePWMWrapValue(uint frequency)
+{
+  return (SYSTEM_CLOCK / (frequency * CLOCK_DIV)) - 1;
+}
+
+static void configureTachometer(uint gpio)
+{
+  gpio_set_function(gpio, GPIO_FUNC_SIO);
   gpio_set_dir(gpio, GPIO_IN);
-  gpio_set_irq_enabled(gpio, GPIO_IRQ_EDGE_FALL, true); // Listen for falling edges on the tachometer pin
+  // Explicitly specifying the ISR function removes the global IRS function which prevents buttons from working (don't do it)
+  // gpio_set_irq_enabled_with_callback(gpio, GPIO_IRQ_EDGE_FALL | GPIO_IRQ_EDGE_RISE, true, &tachometerISR);
+  gpio_set_irq_enabled(gpio, GPIO_IRQ_EDGE_FALL, true);
 }
 
 void tachometerISR(uint gpio, uint32_t events)
 {
-  pulseCount++; // Increment pulse count on each falling edge
+  if (gpio == EXTRACTOR_TACH_GPIO && events & GPIO_IRQ_EDGE_FALL)
+  {
+    pulseCount++;
+  }
 }

@@ -62,7 +62,7 @@ const float LUX_LOW = 600.0f;
 const float LUX_MEDIUM = 1000.0f;
 
 const int EXTRACTOR_PWM_GPIO = 16;
-const int EXTRACTOR_TACH_GPIO = 17;
+const int EXTRACTOR_TACH_GPIO = 28;
 
 #define DISPLAY_SPI_PORT spi0
 #define SENSOR_I2C_PORT i2c1 // Assuming using i2c1 for sensors

@@ -16,8 +16,10 @@ void updateExtractorSpeed(void);
 void tachometerISR(uint gpio, uint32_t events);
 
 // External variable to hold the current fan speed
-extern volatile int currentFanSpeed;
+extern volatile int currentFanSpeed = 0;
+extern volatile int targetFanSpeed = 0;
 extern volatile uint64_t extractorRPM;
+extern volatile uint64_t pulseCount;
 extern volatile bool extractorOn;
 
 #endif // EXTRACTOR_H

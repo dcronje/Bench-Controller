@@ -39,6 +39,7 @@
     "files.associations": {
         "cstdlib": "c",
         "*.tcc": "cpp",
-        "cstdint": "cpp"
+        "cstdint": "cpp",
+        "compare": "cpp"
     }
 }
