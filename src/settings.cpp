@@ -17,6 +17,7 @@ volatile Settings currentSettings = {
     .password = "",
     .authMode = 0,
     .fanSpeed = 50,
+    .lightBrightness = 50,
     .magic = SETTINGS_MAGIC,
 };
 
@@ -121,6 +122,7 @@ void resetSettings()
       .password = "",
       .authMode = 0,
       .fanSpeed = currentSettings.fanSpeed, // DO NOT RESET
+      .lightBrightness = currentSettings.lightBrightness,
       .magic = SETTINGS_MAGIC,
   };
 
@@ -144,6 +146,7 @@ void initSettings()
         .password = "",
         .authMode = 0,
         .fanSpeed = currentSettings.fanSpeed, // DO NOT RESET
+        .lightBrightness = currentSettings.lightBrightness,
         .magic = SETTINGS_MAGIC,
     };
     didLoad = false;

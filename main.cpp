@@ -11,6 +11,7 @@
 #include "interaction.h"
 #include "isr-handlers.h"
 #include "extractor.h"
+#include "lights.h"
 
 #define WATCHDOG_TIMEOUT_MS 5000 // Watchdog timeout in milliseconds
 
@@ -69,6 +70,7 @@ int main()
     initSensors();
     initInteraction();
     initExtractor();
+    initLights();
 
     // requestSettingsReset();
     watchdog_enable(WATCHDOG_TIMEOUT_MS, 1);
@@ -79,7 +81,8 @@ int main()
     // xTaskCreate(controlTask, "ControlTask", 256, NULL, tskIDLE_PRIORITY + 2, NULL);
     xTaskCreate(lightSensorTask, "LightSensorsTask", 256, NULL, tskIDLE_PRIORITY + 2, NULL);
     xTaskCreate(tempSensorTask, "TempSensorsTask", 256, NULL, tskIDLE_PRIORITY + 2, NULL);
-    xTaskCreate(extractorTask, "ExtractorSensorsTask", 256, NULL, tskIDLE_PRIORITY + 2, NULL);
+    xTaskCreate(extractorTask, "ExtractorTask", 256, NULL, tskIDLE_PRIORITY + 2, NULL);
+    xTaskCreate(lightsTask, "LightsTask", 256, NULL, tskIDLE_PRIORITY + 2, NULL);
 
     xTaskCreate(interactionTask, "InteractionTask", 256, NULL, tskIDLE_PRIORITY + 3, NULL);
     xTaskCreate(watchdogKickTask, "WatchdogTask", 256, NULL, tskIDLE_PRIORITY + 3, NULL);

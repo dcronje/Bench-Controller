@@ -19,8 +19,8 @@ typedef struct
 
 void initLights();
 void lightsTask(void *pvParameters);
-void setLightsABrightness(int percent);
-void setLightsBBrightness(int percent);
-void setLightsCBrightness(int percent);
+
+extern volatile int lightBrightness;
+extern volatile int lightTargetBrightness;
 
 #endif // LIGHTS_H

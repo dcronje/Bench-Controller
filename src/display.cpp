@@ -4,6 +4,7 @@
 #include "sensors.h"
 #include "wifi.h"
 #include "extractor.h"
+#include "lights.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,6 +14,9 @@
 #include "hardware/spi.h"
 #include "FreeRTOS.h"
 #include "timers.h"
+
+#define MIN_FAN_SPEED 10;
+#define MAX_FAN_SPEED 100;
 
 // Define the SPI configuration
 SPlatformSpiConfig spiConfig = {
@@ -350,7 +354,7 @@ void renderExtractor()
     canvas.printFixed(38, 8, "OFF", STYLE_NORMAL);
   }
   char buffer[32];
-  snprintf(buffer, sizeof(buffer), "%d%%", targetFanSpeed);
+  snprintf(buffer, sizeof(buffer), "%d%%", currentFanSpeed);
   canvas.setFixedFont(ssd1306xled_font5x7);
   if (currentFanSpeed != targetFanSpeed)
   {
@@ -360,7 +364,18 @@ void renderExtractor()
   {
     canvas.setColor(WHITE);
   }
-  canvas.printFixed(5, 19, buffer, STYLE_NORMAL);
+  if (currentFanSpeed < 10)
+  {
+    canvas.printFixed(43, 19, buffer, STYLE_NORMAL);
+  }
+  else if (currentFanSpeed < 100)
+  {
+    canvas.printFixed(40, 19, buffer, STYLE_NORMAL);
+  }
+  else
+  {
+    canvas.printFixed(38, 19, buffer, STYLE_NORMAL);
+  }
 }
 
 void renderLights()
@@ -384,6 +399,41 @@ void renderLights()
   else
   {
     canvas.drawRect(65, 0, 95, 32);
+  }
+
+  canvas.setFixedFont(ssd1306xled_font6x8);
+  if (lightBrightness > 0)
+  {
+    canvas.setColor(WHITE);
+    canvas.printFixed(71, 8, "ON", STYLE_NORMAL);
+  }
+  else
+  {
+    canvas.setColor(GREY);
+    canvas.printFixed(68, 8, "OFF", STYLE_NORMAL);
+  }
+  char buffer[32];
+  snprintf(buffer, sizeof(buffer), "%d%%", lightTargetBrightness);
+  canvas.setFixedFont(ssd1306xled_font5x7);
+  if (lightBrightness != lightTargetBrightness)
+  {
+    canvas.setColor(GREY);
+  }
+  else
+  {
+    canvas.setColor(WHITE);
+  }
+  if (lightTargetBrightness < 10)
+  {
+    canvas.printFixed(73, 19, buffer, STYLE_NORMAL);
+  }
+  else if (lightTargetBrightness < 100)
+  {
+    canvas.printFixed(70, 19, buffer, STYLE_NORMAL);
+  }
+  else
+  {
+    canvas.printFixed(68, 19, buffer, STYLE_NORMAL);
   }
 }
 
@@ -604,11 +654,11 @@ void displayUp()
 
   if (currentDisplay == HOME)
   {
-    // lightIntensity -= 2;
-    // if (lightIntensity <= 0)
-    // {
-    //     lightIntensity = 0;
-    // }
+    lightTargetBrightness--;
+    if (lightTargetBrightness < 0)
+    {
+      lightTargetBrightness = 0;
+    }
   }
   if (currentDisplay == COMPRESSOR_SETTINGS_MENU)
   {
@@ -651,11 +701,11 @@ void displayUp()
   }
   else if (currentDisplay == SET_FAN_SPEED_DISPLAY)
   {
-    // currentSettings.targetTemp--;
-    // if (currentSettings.targetTemp < minTargetTemp)
-    // {
-    //     currentSettings.targetTemp = minTargetTemp;
-    // }
+    currentSettings.fanSpeed--;
+    if (currentSettings.fanSpeed < MIN_FAN_SPEED)
+    {
+      currentSettings.fanSpeed = MIN_FAN_SPEED;
+    }
   }
 }
 
@@ -663,6 +713,11 @@ void displayDown()
 {
   if (currentDisplay == HOME)
   {
+    lightTargetBrightness++;
+    if (lightTargetBrightness > 100)
+    {
+      lightTargetBrightness = 100;
+    }
     // lightIntensity += 2;
     // if (lightIntensity > 100)
     // {

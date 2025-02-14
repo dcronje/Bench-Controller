@@ -17,6 +17,7 @@ typedef struct
   char password[64];
   int authMode;
   int fanSpeed;
+  int lightBrightness;
   uint32_t magic; // Magic number for validity check
 } Settings;
 
