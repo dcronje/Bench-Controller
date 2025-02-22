@@ -50,9 +50,9 @@ bool bufferToMessage(const char *buffer, Message &msg)
           msg.command.commandType = OFF;
         else if (strcmp(commandType->valuestring, "OFF_RELEASE") == 0)
           msg.command.commandType = OFF_RELEASE;
-        else if (strcmp(commandType->valuestring, "SET_PRESSURE_TIMEOUT") == 0)
+        else if (strcmp(commandType->valuestring, "SET_COMPRESSION_TIMEOUT") == 0)
         {
-          msg.command.commandType = SET_PRESSURE_TIMEOUT;
+          msg.command.commandType = SET_COMPRESSION_TIMEOUT;
           cJSON *timeout = cJSON_GetObjectItem(json, "timeout");
           if (cJSON_IsNumber(timeout))
             msg.command.timeout = timeout->valueint;
@@ -220,8 +220,8 @@ std::string messageToString(const Message &msg)
     case OFF_RELEASE:
       cJSON_AddStringToObject(json, "commandType", "OFF_RELEASE");
       break;
-    case SET_PRESSURE_TIMEOUT:
-      cJSON_AddStringToObject(json, "commandType", "SET_PRESSURE_TIMEOUT");
+    case SET_COMPRESSION_TIMEOUT:
+      cJSON_AddStringToObject(json, "commandType", "SET_COMPRESSION_TIMEOUT");
       cJSON_AddNumberToObject(json, "timeout", msg.command.timeout);
       break;
     case SET_RELEASE_TIMEOUT:
@@ -318,7 +318,7 @@ void sendGetStatusCommand()
     printf("GET_STATUS command queued.\n");
 }
 
-void sendSetPressureTimeoutCommand(int minutes)
+void sendSetCompressionTimeoutCommand(int minutes)
 {
   if (networkStatus != NetworkStatus::CLIENT_CONNECTED)
   {
@@ -328,12 +328,12 @@ void sendSetPressureTimeoutCommand(int minutes)
   }
   Message msg;
   msg.messageType = COMMAND;
-  msg.command.commandType = SET_PRESSURE_TIMEOUT;
+  msg.command.commandType = SET_COMPRESSION_TIMEOUT;
   msg.command.timeout = minutes;
   if (xQueueSend(outgoingMessageQueue, &msg, pdMS_TO_TICKS(100)) != pdPASS)
-    printf("Failed to send SET_PRESSURE_TIMEOUT command.\n");
+    printf("Failed to send SET_COMPRESSION_TIMEOUT command.\n");
   else
-    printf("SET_PRESSURE_TIMEOUT command queued: %d minutes\n", minutes);
+    printf("SET_COMPRESSION_TIMEOUT command queued: %d minutes\n", minutes);
 }
 
 void sendSetMotorTimeoutCommand(int minutes)
@@ -354,7 +354,7 @@ void sendSetMotorTimeoutCommand(int minutes)
     printf("SET_MOTOR_TIMEOUT command queued: %d minutes\n", minutes);
 }
 
-void sendSetSupplyTimeoutCommand(int minutes)
+void sendSetReleaseTimeoutCommand(int minutes)
 {
   if (networkStatus != NetworkStatus::CLIENT_CONNECTED)
   {

@@ -5,6 +5,8 @@
 #include "wifi.h"
 #include "extractor.h"
 #include "lights.h"
+#include "control.h"
+#include "compressor-status.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,6 +19,12 @@
 
 #define MIN_FAN_SPEED 10;
 #define MAX_FAN_SPEED 100;
+#define MIN_COMPRESSION_TIMER_DURATION 5;
+#define MIN_MOTOR_TIMER_DURATION 1;
+#define MIN_RELEASE_TIMER_DURATION 1;
+#define MAX_COMPRESSION_TIMER_DURATION 60;
+#define MAX_MOTOR_TIMER_DURATION 10;
+#define MAX_RELEASE_TIMER_DURATION 10;
 
 // Define the SPI configuration
 SPlatformSpiConfig spiConfig = {
@@ -61,6 +69,10 @@ static bool displayMessage = false;
 static int compressorAlertCount = 0;
 static int extractorAlertCount = 0;
 static int lightsAlertCount = 0;
+
+static int compressionTimerDuration = 0;
+static int motorTimerDuration = 0;
+static int releaseTimerDuration = 0;
 
 void alertCompressor(int flashes)
 {
@@ -180,7 +192,7 @@ uint8_t calculateColor(float targetTemperature, float actualTemperature)
   return RGB_COLOR8(red, green, blue);
 }
 
-void renderSetPressureTimeout()
+void renderSetCompressionTimeout()
 {
   // canvas.clear();
   // canvas.setFixedFont(ssd1306xled_font6x8);
@@ -675,29 +687,29 @@ void displayUp()
     lightsSettingsMenu.up();
     lightsSettingsMenu.show(display);
   }
-  else if (currentDisplay == SET_PRESSURE_TIMEOUT_DISPLAY)
+  else if (currentDisplay == SET_COMPRESSION_TIMEOUT_DISPLAY)
   {
-    // currentSettings.targetTemp--;
-    // if (currentSettings.targetTemp < minTargetTemp)
-    // {
-    //     currentSettings.targetTemp = minTargetTemp;
-    // }
+    compressionTimerDuration--;
+    if (compressionTimerDuration < MIN_COMPRESSION_TIMER_DURATION)
+    {
+      compressionTimerDuration = MIN_COMPRESSION_TIMER_DURATION;
+    }
   }
   else if (currentDisplay == SET_MOTOR_TIMEOUT_DISPLAY)
   {
-    // currentSettings.targetTemp--;
-    // if (currentSettings.targetTemp < minTargetTemp)
-    // {
-    //     currentSettings.targetTemp = minTargetTemp;
-    // }
+    motorTimerDuration--;
+    if (motorTimerDuration < MIN_MOTOR_TIMER_DURATION)
+    {
+      motorTimerDuration = MIN_MOTOR_TIMER_DURATION;
+    }
   }
   else if (currentDisplay == SET_RELEASE_TIMEOUT_DISPLAY)
   {
-    // currentSettings.targetTemp--;
-    // if (currentSettings.targetTemp < minTargetTemp)
-    // {
-    //     currentSettings.targetTemp = minTargetTemp;
-    // }
+    releaseTimerDuration--;
+    if (releaseTimerDuration < MIN_RELEASE_TIMER_DURATION)
+    {
+      releaseTimerDuration = MIN_RELEASE_TIMER_DURATION;
+    }
   }
   else if (currentDisplay == SET_FAN_SPEED_DISPLAY)
   {
@@ -739,29 +751,29 @@ void displayDown()
     lightsSettingsMenu.down();
     lightsSettingsMenu.show(display);
   }
-  else if (currentDisplay == SET_PRESSURE_TIMEOUT_DISPLAY)
+  else if (currentDisplay == SET_COMPRESSION_TIMEOUT_DISPLAY)
   {
-    // currentSettings.targetTemp++;
-    // if (currentSettings.targetTemp > maxTargetTemp)
-    // {
-    //     currentSettings.targetTemp = maxTargetTemp;
-    // }
+    compressionTimerDuration++;
+    if (compressionTimerDuration > MAX_COMPRESSION_TIMER_DURATION)
+    {
+      compressionTimerDuration = MAX_COMPRESSION_TIMER_DURATION;
+    }
   }
   else if (currentDisplay == SET_MOTOR_TIMEOUT_DISPLAY)
   {
-    // currentSettings.targetTemp++;
-    // if (currentSettings.targetTemp > maxTargetTemp)
-    // {
-    //     currentSettings.targetTemp = maxTargetTemp;
-    // }
+    motorTimerDuration++;
+    if (motorTimerDuration > MAX_MOTOR_TIMER_DURATION)
+    {
+      motorTimerDuration = MAX_MOTOR_TIMER_DURATION;
+    }
   }
   else if (currentDisplay == SET_RELEASE_TIMEOUT_DISPLAY)
   {
-    // currentSettings.targetTemp++;
-    // if (currentSettings.targetTemp > maxTargetTemp)
-    // {
-    //     currentSettings.targetTemp = maxTargetTemp;
-    // }
+    releaseTimerDuration++;
+    if (releaseTimerDuration > MAX_RELEASE_TIMER_DURATION)
+    {
+      releaseTimerDuration = MAX_RELEASE_TIMER_DURATION;
+    }
   }
   else if (currentDisplay == SET_FAN_SPEED_DISPLAY)
   {
@@ -814,14 +826,17 @@ void displayEnter()
     uint8_t selection = compressorSettingsMenu.selection();
     if (selection == 0)
     {
-      currentDisplay = SET_PRESSURE_TIMEOUT_DISPLAY;
+      compressionTimerDuration = g_compressorStatus.compressionTimerDuration;
+      currentDisplay = SET_COMPRESSION_TIMEOUT_DISPLAY;
     }
     else if (selection == 1)
     {
+      motorTimerDuration = g_compressorStatus.motorTimerDuration;
       currentDisplay = SET_MOTOR_TIMEOUT_DISPLAY;
     }
     else if (selection == 2)
     {
+      releaseTimerDuration = g_compressorStatus.releaseTimerDuration;
       currentDisplay = SET_RELEASE_TIMEOUT_DISPLAY;
     }
     else if (selection == 3)
@@ -858,7 +873,7 @@ void displayEnter()
     }
   }
   else if (
-      currentDisplay == SET_PRESSURE_TIMEOUT_DISPLAY ||
+      currentDisplay == SET_COMPRESSION_TIMEOUT_DISPLAY ||
       currentDisplay == SET_MOTOR_TIMEOUT_DISPLAY ||
       currentDisplay == SET_RELEASE_TIMEOUT_DISPLAY ||
       currentDisplay == SET_FAN_SPEED_DISPLAY ||
@@ -881,8 +896,21 @@ void displayBack()
   {
     displayHome();
   }
-  else if (currentDisplay == SET_PRESSURE_TIMEOUT_DISPLAY || currentDisplay == SET_MOTOR_TIMEOUT_DISPLAY || currentDisplay == SET_RELEASE_TIMEOUT_DISPLAY)
+  else if (currentDisplay == SET_COMPRESSION_TIMEOUT_DISPLAY || currentDisplay == SET_MOTOR_TIMEOUT_DISPLAY || currentDisplay == SET_RELEASE_TIMEOUT_DISPLAY)
   {
+    if (compressionTimerDuration != g_compressorStatus.compressionTimerDuration)
+    {
+      sendSetCompressionTimeoutCommand(compressionTimerDuration);
+    }
+    if (motorTimerDuration != g_compressorStatus.motorTimerDuration)
+    {
+      sendSetMotorTimeoutCommand(motorTimerDuration);
+    }
+    if (releaseTimerDuration != g_compressorStatus.releaseTimerDuration)
+    {
+      sendSetReleaseTimeoutCommand(releaseTimerDuration);
+    }
+
     displayCompressorSettingsMenu();
     // checkForSettingsChange();
   }
@@ -909,9 +937,9 @@ void displayTask(void *params)
         renderHome();
       }
     }
-    else if (currentDisplay == SET_PRESSURE_TIMEOUT_DISPLAY)
+    else if (currentDisplay == SET_COMPRESSION_TIMEOUT_DISPLAY)
     {
-      renderSetPressureTimeout();
+      renderSetCompressionTimeout();
     }
     else if (currentDisplay == SET_MOTOR_TIMEOUT_DISPLAY)
     {

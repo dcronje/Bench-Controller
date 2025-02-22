@@ -20,7 +20,7 @@ typedef enum
   ON,
   OFF,
   OFF_RELEASE,
-  SET_PRESSURE_TIMEOUT,
+  SET_COMPRESSION_TIMEOUT,
   SET_RELEASE_TIMEOUT,
   SET_MOTOR_TIMEOUT,
   GET_STATUS
@@ -88,9 +88,9 @@ void initControl();
 void sendOnCommand();
 void sendOffCommand();
 void sendGetStatusCommand();
-void sendSetPressureTimeoutCommand(int minutes);
+void sendSetCompressionTimeoutCommand(int minutes);
 void sendSetMotorTimeoutCommand(int minutes);
-void sendSetSupplyTimeoutCommand(int minutes);
+void sendSetReleaseTimeoutCommand(int minutes);
 
 // The control task processes incoming messages (status updates) from the compressor Pico.
 // (This replaces the hardware control task used on the compressor Pico.)
